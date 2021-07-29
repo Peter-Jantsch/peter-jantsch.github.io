@@ -1,0 +1,163 @@
+html {
+  font-weight: 300;
+}
+
+/* This padding keeps the navbar from overlapping the top of the page */
+body {
+  padding-top: 75px;
+}
+
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 500;
+}
+
+h3 {
+  font-size: 20px;
+}
+
+/*
+ * Header
+ */
+
+.navbar-brand {
+  padding-right: 2rem;
+  padding-left: 2rem;
+  margin-bottom: 0;
+  font-weight: 700;
+  color: #D25F15;
+  background-color: transparent;
+}
+
+.navbar .nav-link {
+  padding: .25rem 1rem;
+  font-weight: 400;
+  color: #D25F15;
+  background-color: transparent;
+  border-bottom: .15rem solid transparent;
+}
+
+.navbar .nav-link:hover,
+.navbar .nav-link:focus {
+  color: #D25F15;
+  text-decoration: underline;
+}
+
+
+.navbar .active {
+  font-weight: 700;
+  color: #D25F15;
+}
+
+.div-btn
+{
+    margin-left: 20px;
+}
+
+
+/*
+ * Footer
+ */
+.mastfoot {
+  color: rgba(255, 255, 255, .5);
+}
+
+
+a.anchor-link {
+  display: none;
+}
+
+
+/* Announcement Pager */
+
+.announcement-btn-older:hover, .announcement-btn-newer:hover {
+  cursor: pointer;
+}
+.announcement {
+  display: none;
+}
+.announcement .pager {
+  text-align: left;
+}
+
+/* Calendar */
+
+.calendar table, .calendar th, .calendar tr, .calendar td {
+  border: 1px solid black;
+}
+
+.calendar th, .calendar tr, .calendar td {
+  padding: 12px;
+}
+
+.calendar td.header {
+  font-weight: 500;
+  background-color: rgba(255, 169, 25, .8);
+}
+
+.calendar tr.lab {
+  background-color: rgba(255, 169, 25, .35);
+}
+
+.calendar tr.alt {
+  background-color: rgba(0255, 169, 25, .15);
+}
+
+/* Style for Python Reference Table*/
+
+th {
+    text-align: left
+}
+
+
+table > thead > tr > th, table > tbody > tr > th, table > tfoot > tr > th, table > thead > tr > td,
+table > tbody > tr > td, table > tfoot > tr > td {
+    padding: 8px;
+    line-height: 1.42857143;
+    vertical-align: top;
+    border-top: 1px solid #ddd
+}
+
+table > thead > tr > th {
+    vertical-align: bottom;
+    border-bottom: 2px solid #ddd
+}
+
+table > caption + thead > tr:first-child > th, table > colgroup + thead > tr:first-child > th,
+table > thead:first-child > tr:first-child > th, table > caption + thead > tr:first-child > td,
+table > colgroup + thead > tr:first-child > td, table > thead:first-child > tr:first-child > td {
+    border-top: 0
+}
+
+table > tbody + tbody {
+    border-top: 2px solid #ddd
+}
+
+table {
+    border: 1px solid #ddd;
+    border-spacing: 0;
+    border-collapse: collapse;
+    background-color: #fff;
+    width: 100%;
+    max-width: 100%;
+    margin-bottom: 20px
+}
+
+td, th {
+    padding: 0
+}
+
+table > thead > tr > th, table > tbody > tr > th, table > tfoot > tr > th,
+table > thead > tr > td, table > tbody > tr > td, table > tfoot > tr > td {
+    border: 1px solid #ddd
+}
+
+table > thead > tr > th, table > thead > tr > td {
+    border-bottom-width: 2px
+}
+
+table > tbody > tr:nth-child(odd) {
+    background-color: #f9f9f9
+}
+
+
