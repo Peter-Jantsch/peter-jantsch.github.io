@@ -2,6 +2,38 @@ html {
   font-weight: 300;
 }
 
+* Globals
+ */
+
+/* Links */
+a,
+a:focus,
+a:hover {
+  color: #004B98;
+  /*color: rgba(0, 60, 113, 1);*/
+}
+
+/* Custom default button */
+.btn-secondary,
+.btn-secondary:hover,
+.btn-secondary:focus {
+  color: white;
+  text-shadow: none; /* Prevent inheritance from `body` */
+  background-color: #002856;
+  border: .05rem solid #002856;
+}
+
+/* Custom button inverse*/
+.btn-secondary-inverse {
+  color: #002856;
+  background-color: white;
+}
+
+.boring-link {
+  color: black;
+}
+
+
 /* This padding keeps the navbar from overlapping the top of the page */
 body {
   padding-top: 75px;
