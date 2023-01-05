@@ -1,0 +1,90 @@
+---
+title: "R Lab #"
+author: "Your Name"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+#This is a setup chunk, you will never need to modify it
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(openintro)
+library(oilabs)
+```
+
+### Exercise 1
+
+Here you might type any answers to Exercises.
+
+```{r ex1}
+#Here you would type any code for Exercise 1
+```
+
+### Exercise 2
+
+Here you might type any answers to Exercises.
+
+```{r ex2}
+#Here you would type any code for Exercise 2
+```
+
+
+### Exercise 3
+
+Here you might type any answers to Exercises.
+
+```{r ex3}
+#Here you would type any code for Exercise 3
+```
+
+### Exercise 4
+
+Here you might type any answers to Exercises.
+
+```{r ex4}
+#Here you would type any code for Exercise 4
+```
+
+### Exercise 5
+
+Here you might type any answers to Exercises.
+
+```{r ex5}
+#Here you would type any code for Exercise 5
+```
+
+### Exercise 6
+
+Here you might type any answers to Exercises.
+
+```{r ex6}
+#Here you would type any code for Exercise 6
+```
+
+### Exercise 7
+
+Here you might type any answers to Exercises.
+
+```{r ex7}
+#Here you would type any code for Exercise 7
+```
+
+### Exercise 8
+
+Here you might type any answers to Exercises.
+
+```{r ex8}
+#Here you would type any code for Exercise 8
+```
+
+### Exercise 9
+
+Here you might type any answers to Exercises.
+
+```{r}
+#Here you would type any code for Exercise 9
+```
+
+
