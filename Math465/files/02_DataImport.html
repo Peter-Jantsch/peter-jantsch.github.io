@@ -980,7 +980,7 @@ the same book section.</p></li>
 new functions to <code>select</code> just the variables we want.</p>
 <ol start="9" style="list-style-type: decimal">
 <li>Use the <code>select</code> function to pick out just the columns
-with <code>geo_id</code>, <code>geo_name</code>, and the percentage and
+with <code>geoid</code>, <code>geoname</code>, and the percentage and
 margin of error columns.</li>
 </ol>
 </div>
@@ -992,6 +992,38 @@ to get the same data from 2019, and import them as
 <code>alone_2019</code> and <code>transit_2019</code>. Repeat the
 process of cleaning the names and parsing the numbers.</li>
 </ol>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>alone_2021 <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">&quot;GCT0802.csv&quot;</span>, <span class="at">comment=</span><span class="st">&quot;TITLE:&quot;</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">clean_names</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">commute_alone_pct =</span> estimate,</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">commute_alone_mg_error =</span> <span class="sc">-</span><span class="fu">parse_number</span>(mg_error)</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(geoid, geoname, commute_alone_pct, commute_alone_mg_error)</span></code></pre></div>
+<pre><code>## Parsed with column specification:
+## cols(
+##   TBLID = col_character(),
+##   GEOID = col_character(),
+##   GEONAME = col_character(),
+##   PROFLN = col_double(),
+##   ESTIMATE = col_double(),
+##   MG_ERROR = col_character()
+## )</code></pre>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>transit_2021 <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">&quot;GCT0804.csv&quot;</span>, <span class="at">comment=</span><span class="st">&quot;TITLE:&quot;</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">clean_names</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">commute_transit_pct =</span> estimate,</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">commute_transit_mg_error =</span> <span class="sc">-</span><span class="fu">parse_number</span>(mg_error) </span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(geoid, geoname, commute_transit_pct, commute_transit_mg_error)</span></code></pre></div>
+<pre><code>## Parsed with column specification:
+## cols(
+##   TBLID = col_character(),
+##   GEOID = col_character(),
+##   GEONAME = col_character(),
+##   PROFLN = col_double(),
+##   ESTIMATE = col_double(),
+##   MG_ERROR = col_character()
+## )</code></pre>
 </div>
 <div id="putting-it-all-together" class="section level2">
 <h2>Putting it all together</h2>
@@ -1003,24 +1035,24 @@ data frame.</p>
 <li>What are the advantages or disadvantages of storing the information
 in this way? Do either adhere to the “tidy” data principles?</li>
 </ol>
-<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>commute_2019 <span class="ot">&lt;-</span> alone_2019 <span class="sc">%&gt;%</span> </span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">inner_join</span>(transit_2019, <span class="at">by=</span><span class="fu">c</span>(<span class="st">&quot;geoid&quot;</span>, <span class="st">&quot;geoname&quot;</span>)) <span class="sc">%&gt;%</span> </span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">year =</span> <span class="st">&quot;2019&quot;</span>, <span class="at">.after=</span>geoname)</span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>commute_2021 <span class="ot">&lt;-</span> alone_2021 <span class="sc">%&gt;%</span> </span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">inner_join</span>(transit_2021, <span class="at">by=</span><span class="fu">c</span>(<span class="st">&quot;geoid&quot;</span>, <span class="st">&quot;geoname&quot;</span>)) <span class="sc">%&gt;%</span> </span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">year =</span> <span class="st">&quot;2021&quot;</span>, <span class="at">.after=</span>geoname)</span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Way 1</span></span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>commute_1 <span class="ot">&lt;-</span> commute_2021 <span class="sc">%&gt;%</span> <span class="fu">bind_rows</span>(commute_2019)</span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Way 2</span></span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>commute_2 <span class="ot">&lt;-</span> commute_2019 <span class="sc">%&gt;%</span> </span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">-</span>year) <span class="sc">%&gt;%</span> </span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">left_join</span>(</span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    commute_2021 <span class="sc">%&gt;%</span> <span class="fu">select</span>(<span class="sc">-</span>year), </span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>    <span class="at">by=</span><span class="fu">c</span>(<span class="st">&quot;geoname&quot;</span>), </span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>    <span class="at">suffix =</span> <span class="fu">c</span>(<span class="st">&quot;_2019&quot;</span>, <span class="st">&quot;_2020&quot;</span>)</span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">-</span><span class="fu">contains</span>(<span class="st">&quot;geoid&quot;</span>))</span></code></pre></div>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>commute_2019 <span class="ot">&lt;-</span> alone_2019 <span class="sc">%&gt;%</span> </span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">inner_join</span>(transit_2019, <span class="at">by=</span><span class="fu">c</span>(<span class="st">&quot;geoid&quot;</span>, <span class="st">&quot;geoname&quot;</span>)) <span class="sc">%&gt;%</span> </span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">year =</span> <span class="st">&quot;2019&quot;</span>, <span class="at">.after=</span>geoname)</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>commute_2021 <span class="ot">&lt;-</span> alone_2021 <span class="sc">%&gt;%</span> </span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">inner_join</span>(transit_2021, <span class="at">by=</span><span class="fu">c</span>(<span class="st">&quot;geoid&quot;</span>, <span class="st">&quot;geoname&quot;</span>)) <span class="sc">%&gt;%</span> </span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">year =</span> <span class="st">&quot;2021&quot;</span>, <span class="at">.after=</span>geoname)</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Way 1</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>commute_1 <span class="ot">&lt;-</span> commute_2021 <span class="sc">%&gt;%</span> <span class="fu">bind_rows</span>(commute_2019)</span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Way 2</span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>commute_2 <span class="ot">&lt;-</span> commute_2019 <span class="sc">%&gt;%</span> </span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">-</span>year) <span class="sc">%&gt;%</span> </span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">left_join</span>(</span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>    commute_2021 <span class="sc">%&gt;%</span> <span class="fu">select</span>(<span class="sc">-</span>year), </span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>    <span class="at">by=</span><span class="fu">c</span>(<span class="st">&quot;geoname&quot;</span>), </span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>    <span class="at">suffix =</span> <span class="fu">c</span>(<span class="st">&quot;_2019&quot;</span>, <span class="st">&quot;_2020&quot;</span>)</span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">-</span><span class="fu">contains</span>(<span class="st">&quot;geoid&quot;</span>))</span></code></pre></div>
 <p>We’ll use this dataframe for our next activity, too. So go ahead and
 save it using the command
 <code>write_csv(commute_1, &quot;commute.csv&quot;)</code>.</p>
@@ -1034,12 +1066,13 @@ save it using the command
           <div id="toc">
        <button type="button" class="close">×</button>
        <ul>
-       <li><a href="#getting-data" id="toc-getting-data">Getting
-       Data</a></li>
-       <li><a href="#renaming-the-columns" id="toc-renaming-the-columns">Renaming the columns</a></li>
-       <li><a href="#wrangling-and-joining" id="toc-wrangling-and-joining">“Wrangling” and joining</a></li>
-       <li><a href="#past-data" id="toc-past-data">Past Data</a></li>
-       <li><a href="#putting-it-all-together" id="toc-putting-it-all-together">Putting it all together</a></li>
+       <li><a href="#getting-data">Getting Data</a></li>
+       <li><a href="#renaming-the-columns">Renaming the columns</a></li>
+       <li><a href="#wrangling-and-joining">“Wrangling” and
+       joining</a></li>
+       <li><a href="#past-data">Past Data</a></li>
+       <li><a href="#putting-it-all-together">Putting it all
+       together</a></li>
        </ul>
      </div>
         </div>
