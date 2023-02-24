@@ -29,7 +29,7 @@ There are some high correlations between some variables and they are on very dif
 # The data is included in the heplots library
 library(heplots)
 data("Diabetes")
-help(Diabetes)
+#help(Diabetes)
 
 # numeric summaries
 library(skimr)
@@ -76,8 +76,6 @@ qda_model <- discrim_quad() %>%
 Let's put these together into a single `workflowset`, along with a KNN model. Notice how each model is identified by a combination of the recipe name and model name that we give in the list.
 
 ```{r}
-knn_model <- 
-
 diab_wfs <- workflow_set(
   preproc = list(rec = recipe),
   models = list(
@@ -85,7 +83,10 @@ diab_wfs <- workflow_set(
       set_mode("classification") %>%
       set_engine("kknn"),
     lda = lda_model,
-    qda = qda_model
+    qda = qda_model,
+    nb = naive_Bayes() %>%
+      set_engine("klaR") %>%
+      set_mode("classification")
     # logistic regression had problems with this example,
     # so I'm leaving it out!
     #logreg = logistic_reg(engine = "glm")
@@ -98,13 +99,13 @@ diab_wfs
 Let's use cross-validation to see which model performs the best on the training data:
 
 ```{r}
-folds <- vfold_cv(diab_train, v=10, repeats=5, strata=group)
+folds <- vfold_cv(diab_train, v=5, repeats=5, strata=group)
 
 diab_wfs <- diab_wfs %>% workflow_map(
   # the name of the function to map:
   "fit_resamples", 
   # Options to `fit_resamples()`: 
-  resamples = folds
+  resamples = folds, metrics = metric_set(sens, spec, accuracy, roc_auc, f_meas)
   )
 
 # The result variable in the workflowset is now filled
@@ -120,6 +121,23 @@ autoplot(diab_wfs)
 
 
 Notice that the standard errors are higher than our other examples, since each of the folds is somewhat small!
+
+```{r}
+diab_results <- diab_wfs %>% 
+  extract_workflow("rec_nb") %>%
+  fit(data=diab_train) %>%
+  augment(new_data=diab_test)
+```
+
+```{r}
+conf_mat(diab_results, truth=group, estimate=.pred_class)
+sens(diab_results, truth=group, estimate=.pred_class)
+kap(diab_results, truth=group, estimate=.pred_class)
+f_meas(diab_results, truth=group, estimate=.pred_class)
+roc_auc(diab_results, truth=group, c(.pred_Normal, .pred_Chemical_Diabetic,.pred_Overt_Diabetic))
+```
+
+
 
 # Group project
 
