@@ -1,0 +1,277 @@
+---
+title: "Trees Model Building and Tuning"
+output: html_document
+date: "2023-01-11"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(scales)
+library(tidymodels)
+library(lubridate)
+library(RSocrata)
+```
+
+# Background
+
+This example involves building a model for predicting whether a traffic accident will involve injuries or not. We will use data from the city of Chicago's open data portal. (Some of this activity is derived from a [blog post](https://juliasilge.com/blog/chicago-traffic-model/) by Julia Silge, one of the authors of our book, TMWR)
+
+```{r}
+years_ago <- today() - years(1) # data from last year. Can go back further, but compute time will be very long!
+crash_url <- glue::glue("https://data.cityofchicago.org/Transportation/Traffic-Crashes-Crashes/85ca-t3if?$where=CRASH_DATE > '{years_ago}'")
+crash_raw <- as_tibble(read.socrata(crash_url)) # a new way to read in data, don't worry about it!
+```
+
+This dataset is pretty crazy! Take a look at it in the viewer, and then let's do some data munging to get it into a nicer form. 
+
+  -create a variable called `injuries` which indicates if the crash involved injuries or not.
+  -create an unknown category for missing `report_type`s
+  -decide which other variables to keep
+  -omit rows with missing data (about 2000 rows). This will affect the model, because it might be that the missing data reveals something important! For example, maybe all the missing cases are alike in some way that could inform the model. But we have so much data that in this case it will not likely affect things.
+  
+Take a minute to see if you understand each step. If you want more details on all the steps that are going into it, check out the blog post linked above.
+
+```{r}
+crash <- crash_raw %>%
+  arrange(desc(crash_date)) %>%
+  transmute(
+    injuries = as.factor(if_else(injuries_total > 0, "injuries", "none")),
+    crash_date,
+    crash_hour,
+    report_type = if_else(report_type == "", "UNKNOWN", report_type),
+    num_units,
+    posted_speed_limit,
+    weather_condition,
+    lighting_condition,
+    roadway_surface_cond,
+    first_crash_type,
+    trafficway_type,
+    prim_contributory_cause,
+    latitude, longitude
+  ) %>%
+  na.omit()
+
+crash
+```
+
+## EDA
+
+Let's see how the number of crashes varied over time. (If you go back further, you'll see the effect of the pandemic!)
+
+```{r}
+crash %>%
+  mutate(crash_date = floor_date(crash_date, unit = "week")) %>%
+  count(crash_date, injuries) %>%
+  filter(
+    crash_date != last(crash_date),
+    crash_date != first(crash_date)
+  ) %>%
+  ggplot(aes(crash_date, n, color = injuries)) +
+  geom_line(linewidth = 1.5, alpha = 0.7) +
+  scale_y_continuous(limits = (c(0, NA))) +
+  labs(
+    x = NULL, y = "Number of traffic crashes per week",
+    color = "Injuries?"
+  )
+```
+
+How does the proportion of crashes with injuries change over time?
+
+```{r}
+crash %>%
+  mutate(crash_date = floor_date(crash_date, unit = "week")) %>%
+  count(crash_date, injuries) %>%
+  filter(
+    crash_date != last(crash_date),
+    crash_date != first(crash_date)
+  ) %>%
+  group_by(crash_date) %>%
+  mutate(percent_injury = n / sum(n)) %>%
+  ungroup() %>%
+  filter(injuries == "injuries") %>%
+  ggplot(aes(crash_date, percent_injury)) +
+  geom_line(size = 1.5, alpha = 0.7, color = "midnightblue") +
+  scale_y_continuous(limits = c(0, NA), labels=scales::percent_format()) +
+  labs(x = NULL, y = "% of crashes that involve injuries")
+```
+
+Does the day of the week affect the number of crashes or whether injuries occured?
+
+```{r}
+crash %>%
+  mutate(crash_date = wday(crash_date, label = TRUE)) %>%
+  count(crash_date, injuries) %>%
+  group_by(injuries) %>%
+  mutate(percent = n / sum(n)) %>%
+  ungroup() %>%
+  ggplot(aes(percent, crash_date, fill = injuries)) +
+  geom_col(position = "dodge", alpha = 0.8) +
+  scale_x_continuous(labels = scales::percent_format()) +
+  labs(x = "% of crashes", y = NULL, fill = "Injuries?")
+```
+
+Let's look at some of the most common crash types to see if there is an association with injuries.
+
+```{r}
+crash %>%
+  count(first_crash_type, injuries) %>%
+  mutate(first_crash_type = fct_reorder(first_crash_type, n)) %>%
+  group_by(injuries) %>%
+  mutate(percent = n / sum(n)) %>%
+  ungroup() %>%
+  group_by(first_crash_type) %>%
+  filter(sum(n) > 1e4) %>%
+  ungroup() %>%
+  ggplot(aes(percent, first_crash_type, fill = injuries)) +
+  geom_col(position = "dodge", alpha = 0.8) +
+  scale_x_continuous(labels = scales::percent_format()) +
+  labs(x = "% of crashes", y = NULL, fill = "Injuries?")
+```
+
+Lastly, perhaps the location of the crash provides some extra information. 
+
+```{r}
+crash %>%
+  filter(latitude > 0) %>%
+  ggplot(aes(longitude, latitude, color = injuries)) +
+  geom_point(size = 0.5, alpha = 0.4) +
+  labs(color = NULL) +
+  scale_color_manual(values = c("deeppink4", "gray80")) +
+  coord_fixed()
+```
+
+# Model Building: Decision Tree
+
+```{r}
+set.seed(2023)
+crash_split <- initial_split(crash, strata = injuries, prop=.7)
+crash_train <- training(crash_split)
+crash_test <- testing(crash_split)
+
+# 10 fold CV, no repeats since the training set is huge
+crash_folds <- vfold_cv(crash_train, strata = injuries)
+```
+
+Let's create two recipes, and test how they perform. We'll also tune the parameters in the decision tree model. What does `step_downsample` and why is that important here?
+
+```{r}
+library(themis)
+
+basic_recipe <- recipe(injuries ~ ., data = crash_train) %>%
+  step_date(crash_date) %>%
+  step_rm(crash_date) %>%
+  step_other(weather_condition, first_crash_type,
+    trafficway_type, prim_contributory_cause,
+    other = "OTHER"
+  )
+  # Tree methods can handle categorical predictors, so we don't need to dummy!
+  #step_dummy(all_nominal_predictors()) %>%
+  # Tree methods are also insensitive to scale, so we don't need to rescale
+
+downsample_recipe <- basic_recipe %>%
+  step_downsample(injuries) # from the themis package. What does this do?
+
+library(baguette)
+dtree_spec <- decision_tree(tree_depth = tune(), cost_complexity=tune()) %>%
+  set_engine("rpart") %>%
+  set_mode("classification")
+
+
+crash_wf <- workflow_set(
+  preproc = list(
+    basic=basic_recipe,
+    downsample=downsample_recipe
+    ),
+  models = list(
+    decision_tree = dtree_spec
+  )
+)
+
+```
+
+# Tuning the Model
+
+```{r}
+# This will take a looooong time! Let's parallelize it.
+all_cores <- parallel::detectCores(logical = FALSE) # This will check how many cores are available on your machine
+
+library(doParallel)
+cl <- makePSOCKcluster(all_cores)
+registerDoParallel(cl)
+
+crash_res <- crash_wf %>%
+  workflow_map(
+    "tune_grid",
+    verbose=TRUE,
+    grid = 10,
+    resamples = crash_folds,
+    metrics = metric_set(accuracy, sens, spec, f_meas)
+  )
+```
+
+Once the model has been tuned on all the folds, we have some helper functions to let us get a look at the performance estimates.
+
+```{r}
+rank_results(crash_res)
+rank_results(crash_res, rank_metric="f_meas")
+autoplot(crash_res)
+autoplot(crash_res, id="downsample_decision_tree")
+```
+
+```{r}
+basic_best_param <- crash_res %>%
+      extract_workflow_set_result("basic_decision_tree") %>%
+      select_best(metric="accuracy")
+
+basic_res <- crash_res %>%
+  extract_workflow("basic_decision_tree") %>%
+  finalize_workflow(
+    basic_best_param
+  ) %>%
+  fit(crash_train) %>%
+  augment(crash_test)
+  
+downsample_best_param <- crash_res %>%
+      extract_workflow_set_result("downsample_decision_tree") %>%
+      select_best(metric="accuracy")
+
+downsample_final <- crash_res %>%
+  extract_workflow("downsample_decision_tree") %>%
+  finalize_workflow(
+    downsample_best_param
+  ) %>%
+  fit(crash_train) 
+
+downsample_res <- downsample_final %>%
+  augment(crash_test)
+```
+
+Was the CV estimate good for these?
+
+```{r}
+my_metrics <- metric_set(accuracy, f_meas, sens, spec)
+my_metrics(downsample_res, truth=injuries, estimate=.pred_class)
+
+my_metrics(basic_res, truth=injuries, estimate=.pred_class)
+```
+# Displaying a Tree
+
+```{r, warning=F}
+library(rpart.plot)
+
+downsample_final %>%
+  extract_fit_engine() %>%
+  rpart.plot()
+
+# This code looks really complicated, only because I didn't save the fitted model anywhere like I did with the downsampled one
+crash_res %>%
+  extract_workflow("basic_decision_tree") %>%
+  finalize_workflow(
+    basic_best_param
+  ) %>%
+  fit(crash_train) %>%
+  extract_fit_engine() %>%
+  rpart.plot()
+```
+
