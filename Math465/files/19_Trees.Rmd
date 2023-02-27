@@ -145,7 +145,7 @@ crash %>%
 
 ```{r}
 set.seed(2023)
-crash_split <- initial_split(crash, strata = injuries, prop=.7)
+crash_split <- initial_split(crash, strata = injuries, prop=.75)
 crash_train <- training(crash_split)
 crash_test <- testing(crash_split)
 
@@ -165,7 +165,7 @@ basic_recipe <- recipe(injuries ~ ., data = crash_train) %>%
     trafficway_type, prim_contributory_cause,
     other = "OTHER"
   )
-  # Tree methods can handle categorical predictors, so we don't need to dummy!
+  # Most tree methods can handle categorical predictors, so we don't need to dummy!
   #step_dummy(all_nominal_predictors()) %>%
   # Tree methods are also insensitive to scale, so we don't need to rescale
 
@@ -173,7 +173,7 @@ downsample_recipe <- basic_recipe %>%
   step_downsample(injuries) # from the themis package. What does this do?
 
 library(baguette)
-dtree_spec <- decision_tree(tree_depth = tune(), cost_complexity=tune()) %>%
+dtree_spec <- decision_tree(tree_depth = tune(), cost_complexity=tune(), min_n=30) %>%
   set_engine("rpart") %>%
   set_mode("classification")
 
@@ -275,3 +275,53 @@ crash_res %>%
   rpart.plot()
 ```
 
+# Ensemble Based Tree Methods
+
+```{r}
+library(baguette)
+bag_spec <- bag_tree(
+    class_cost=tune(), tree_depth=tune(), 
+    min_n = 20, cost_complexity=tune()) %>%
+  set_engine("rpart") %>%
+  set_mode("classification")
+
+library(ranger)
+# I'm not setting any tuning parameters because it takes forever to tune
+rf_spec <- rand_forest(min_n = 20) %>%
+  set_engine("ranger") %>%
+  set_mode("classification")
+
+crash_wfs <- workflow_set(
+  preproc = list(rec = downsample_recipe),
+  models = list(bagging = bag_spec,
+                rf = rf_spec)
+  )
+```
+
+```{r}
+crash_res <- crash_wfs %>%
+  workflow_map(
+    "tune_grid",
+    verbose=TRUE,
+    grid = 10,
+    resamples = crash_folds
+  )
+stopCluster(cl)
+# Stops the parallel backend
+```
+
+```{r}
+collect_metrics(crash_res)
+autoplot(crash_res)
+```
+
+
+# Your turn
+
+1. Create a boosting tree model specification. Make sure to read the help page and see which parameters can be tuned.
+
+2. Create a workflow with just this model specification and the recipe. Tune the model using the 10 fold CV.
+
+3. You probably failed at the last point. Can you figure out what you need to change to make this model run?
+
+4. Compare the performance of this model to the bagged tree and random forest. Are they different, about the same? Which model might you choose out of the ones we've tried so far?
