@@ -129,6 +129,7 @@ diab_results <- diab_wfs %>%
   augment(new_data=diab_test)
 ```
 
+<!--
 ```{r}
 conf_mat(diab_results, truth=group, estimate=.pred_class)
 sens(diab_results, truth=group, estimate=.pred_class)
@@ -136,7 +137,7 @@ kap(diab_results, truth=group, estimate=.pred_class)
 f_meas(diab_results, truth=group, estimate=.pred_class)
 roc_auc(diab_results, truth=group, c(.pred_Normal, .pred_Chemical_Diabetic,.pred_Overt_Diabetic))
 ```
-
+-->
 
 
 # Group project
