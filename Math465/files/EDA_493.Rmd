@@ -1,0 +1,56 @@
+---
+title: "Exploratory Data Analysis"
+author: "Your Name"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(scales)
+library(RSocrata) # for reading in data
+library(lubridate) # for dealing with date-time data
+```
+
+# Background
+
+We're going to explore a large data set or traffic crashes to learn about what factors are connected with injuries. We will use data from the city of [Chicago's open data portal](https://data.cityofchicago.org/Transportation/Traffic-Crashes-Crashes/85ca-t3if/about_data). (This activity is derived from a [blog post](https://juliasilge.com/blog/chicago-traffic-model/) by Julia Silge)
+
+```{r}
+years_ago <- mdy("01/01/2022") # data from last 2 years. May take time to load!
+crash_url <- glue::glue("https://data.cityofchicago.org/Transportation/Traffic-Crashes-Crashes/85ca-t3if?$where=CRASH_DATE >= '{years_ago}'")
+crash_raw <- as_tibble(read.socrata(crash_url)) # a new way to read in data, don't worry about it!
+```
+
+This dataset is pretty crazy! Take a look at it in the viewer, and then let's do some data munging to get it into a nicer form. 
+
+  -create a variable called `injuries` which indicates if the crash involved injuries or not.
+  -create an unknown category for missing `report_type`s
+  -decide which other variables to keep
+  
+```{r}
+crash <- crash_raw %>%
+  arrange(desc(crash_date)) %>%
+  transmute(
+    injuries = as.factor(if_else(injuries_total > 0, "injuries", "none")),
+    # choose your variables here (use ?transmute to see what this does)
+    latitude, longitude
+  )
+```
+
+
+## Exploratory Data Analysis
+
+Here's a few questions to get you started. 
+
+1. Take a look at crashes by latitude and longitude, colored by injuries. What do you notice?
+
+2. What are the most common contributing factors to a crash?
+
+3. How do crashes vary month by month? Compare crashes by month in 2022 to 2023.
+
+4. Are crashes more likely to cause injuries when it is rainy and dark? Use the variables `weather_condition` and `lighting_condition` to explore.
+
+5. Choose a question you want to explore, and create an appropriate visual.
+
+
