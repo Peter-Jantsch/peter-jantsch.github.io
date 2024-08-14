@@ -37,9 +37,9 @@ body {
 
 .dark {
   --clr-bg: #002856;
-  --clr-bg-alt: #FF9F19;
-  --clr-fg: #7C868D;
-  --clr-fg-alt: #7C868D;
+  --clr-bg-alt: #7C868D;
+  --clr-fg: #FFFFFF;
+  --clr-fg-alt: #D7D2CB;
   --clr-primary: #FF9F19;
   --shadow: rgba(0, 0, 0, 0.16) 0px 10px 36px 0px,
     rgba(0, 0, 0, 0.06) 0px 0px 0px 1px;
@@ -270,7 +270,7 @@ main {
 
 .about__desc,
 .about__contact {
-  margin-top: 2.4em;
+  /*margin-top: 2.4em;*/
 }
 
 .about .link--icon {
@@ -294,6 +294,7 @@ main {
   margin: 0 auto;
   text-align: center;
   box-shadow: var(--shadow);
+
   transition: transform 0.2s linear;
 }
 
