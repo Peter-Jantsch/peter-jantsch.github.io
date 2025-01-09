@@ -2,15 +2,16 @@
 title: "Class Activity: Getting Started with R and R Studio"
 date: "`r Sys.Date()`"
 output:
-  html_document
+  rmdformats::html_clean
 ---
 ```{r setup, include=FALSE}
 ## Note that this code chunk will not appear in your knitted file because of the option `include=FALSE`
-## First, we load packages we need.If you get an error, make sure you have these installed by running the following code. You only need to install once, but you must load packages everytime you start a new project.
+## First, we load packages we need.If you get an error, make sure you have these installed by running the following code. You only need to install once, but you must load packages every time you start a new session.
 # install.packages("tidyverse")
 # install.packages("palmerpenguins")
 library(tidyverse)
 library(palmerpenguins)
+library(ggthemes)
 ```
 
 # Looking at the data
@@ -35,23 +36,9 @@ One more note: the beginning of each code chunk looks like `{r chunk-name}`. The
 
 # First Plot
 
-This code chunk re-creates the plot from [Section 2.2 of R4DS](https://r4ds.hadley.nz/data-visualize.html#first-steps). 
+Use this section to follow along with [Chapter 1 of R4DS](https://r4ds.hadley.nz/data-visualize). Make a new chunk to run code from the chapter, and eventually you should make this image:
 
-```{r first-plot}
-ggplot(
-  data = penguins,
-  mapping = aes(x = flipper_length_mm, y = body_mass_g)
-) +
-  geom_point(mapping=aes(color = species, shape = species)) +
-  geom_smooth() +
-  labs(
-    title = "Body mass and flipper length",
-    subtitle = "Dimensions for Adelie, Chinstrap, and Gentoo Penguins",
-    x = "Flipper length (mm)",
-    y = "Body mass (g)",
-    color = "Species",
-    shape = "Species"
-  )
-```
+![](https://r4ds.hadley.nz/data-visualize_files/figure-html/unnamed-chunk-7-1.png)
+
 
 
