@@ -1,9 +1,9 @@
 ---
 title: "Class Activity: Getting Started with R and R Studio"
 date: "`r Sys.Date()`"
-output:
-  rmdformats::html_clean
+output: html_document
 ---
+
 ```{r setup, include=FALSE}
 ## Note that this code chunk will not appear in your knitted file because of the option `include=FALSE`
 ## First, we load packages we need.If you get an error, make sure you have these installed by running the following code. You only need to install once, but you must load packages every time you start a new session.
@@ -13,6 +13,8 @@ library(tidyverse)
 library(palmerpenguins)
 library(ggthemes)
 ```
+
+
 
 # Looking at the data
 
@@ -36,9 +38,13 @@ One more note: the beginning of each code chunk looks like `{r chunk-name}`. The
 
 # First Plot
 
-Use this section to follow along with [Chapter 1 of R4DS](https://r4ds.hadley.nz/data-visualize). Make a new chunk to run code from the chapter, and eventually you should make this image:
+Use this section to follow along with [Chapter 1 of R4DS](https://r4ds.hadley.nz/data-visualize). Make a new chunk (you can use the keyboard shortcut OPTION + COMMAND + I or find the "+C" button in the toolbar) to run code from the chapter, and eventually you should make this image:
 
 ![](https://r4ds.hadley.nz/data-visualize_files/figure-html/unnamed-chunk-7-1.png)
 
+```{r}
+ggplot(penguins) +
+  geom_point(aes(x=flipper_length_mm, y=body_mass_g))
+```
 
 
