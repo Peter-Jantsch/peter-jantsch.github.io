@@ -982,36 +982,6 @@ to get the same data from 2019, and import them as
 <code>alone_2019</code> and <code>transit_2019</code>. Repeat the
 process of cleaning the names and parsing the numbers.</li>
 </ol>
-<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a>alone_2021 <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">&quot;GCT0802.csv&quot;</span>, <span class="at">comment=</span><span class="st">&quot;TITLE:&quot;</span>) <span class="sc">%&gt;%</span> </span>
-<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a>  <span class="fu">clean_names</span>() <span class="sc">%&gt;%</span></span>
-<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
-<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a>    <span class="at">commute_alone_pct =</span> estimate,</span>
-<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a>    <span class="at">commute_alone_mg_error =</span> <span class="sc">-</span><span class="fu">parse_number</span>(mg_error)</span>
-<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
-<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a>  <span class="fu">select</span>(geoid, geoname, commute_alone_pct, commute_alone_mg_error)</span></code></pre></div>
-<pre><code>## Rows: 7097 Columns: 6
-## ── Column specification ────────────────────────────────────────────────────────
-## Delimiter: &quot;,&quot;
-## chr (4): TBLID, GEOID, GEONAME, MG_ERROR
-## dbl (2): PROFLN, ESTIMATE
-## 
-## ℹ Use `spec()` to retrieve the full column specification for this data.
-## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.</code></pre>
-<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a>transit_2021 <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">&quot;GCT0804.csv&quot;</span>, <span class="at">comment=</span><span class="st">&quot;TITLE:&quot;</span>) <span class="sc">%&gt;%</span> </span>
-<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>  <span class="fu">clean_names</span>() <span class="sc">%&gt;%</span></span>
-<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
-<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>    <span class="at">commute_transit_pct =</span> estimate,</span>
-<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>    <span class="at">commute_transit_mg_error =</span> <span class="sc">-</span><span class="fu">parse_number</span>(mg_error) </span>
-<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
-<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a>  <span class="fu">select</span>(geoid, geoname, commute_transit_pct, commute_transit_mg_error)</span></code></pre></div>
-<pre><code>## Rows: 7097 Columns: 6
-## ── Column specification ────────────────────────────────────────────────────────
-## Delimiter: &quot;,&quot;
-## chr (4): TBLID, GEOID, GEONAME, MG_ERROR
-## dbl (2): PROFLN, ESTIMATE
-## 
-## ℹ Use `spec()` to retrieve the full column specification for this data.
-## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.</code></pre>
 </div>
 <div id="putting-it-all-together" class="section level2">
 <h2>Putting it all together</h2>
@@ -1023,29 +993,24 @@ data frame.</p>
 <li>What are the advantages or disadvantages of storing the information
 in this way? Do either adhere to the “tidy” data principles?</li>
 </ol>
-<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>commute_2019 <span class="ot">&lt;-</span> alone_2019 <span class="sc">%&gt;%</span> </span>
-<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>  <span class="fu">inner_join</span>(transit_2019, <span class="at">by=</span><span class="fu">c</span>(<span class="st">&quot;geoid&quot;</span>, <span class="st">&quot;geoname&quot;</span>)) <span class="sc">%&gt;%</span> </span>
-<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">year =</span> <span class="st">&quot;2019&quot;</span>, <span class="at">.after=</span>geoname)</span>
-<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a>commute_2021 <span class="ot">&lt;-</span> alone_2021 <span class="sc">%&gt;%</span> </span>
-<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a>  <span class="fu">inner_join</span>(transit_2021, <span class="at">by=</span><span class="fu">c</span>(<span class="st">&quot;geoid&quot;</span>, <span class="st">&quot;geoname&quot;</span>)) <span class="sc">%&gt;%</span> </span>
-<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">year =</span> <span class="st">&quot;2021&quot;</span>, <span class="at">.after=</span>geoname)</span>
-<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a></span>
-<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a><span class="co"># Way 1</span></span>
-<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a>commute_1 <span class="ot">&lt;-</span> commute_2021 <span class="sc">%&gt;%</span> <span class="fu">bind_rows</span>(commute_2019)</span>
-<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a><span class="co"># Way 2</span></span>
-<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a>commute_2 <span class="ot">&lt;-</span> commute_2019 <span class="sc">%&gt;%</span> </span>
-<span id="cb5-12"><a href="#cb5-12" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">-</span>year) <span class="sc">%&gt;%</span> </span>
-<span id="cb5-13"><a href="#cb5-13" tabindex="-1"></a>  <span class="fu">left_join</span>(</span>
-<span id="cb5-14"><a href="#cb5-14" tabindex="-1"></a>    commute_2021 <span class="sc">%&gt;%</span> <span class="fu">select</span>(<span class="sc">-</span>year), </span>
-<span id="cb5-15"><a href="#cb5-15" tabindex="-1"></a>    <span class="at">by=</span><span class="fu">c</span>(<span class="st">&quot;geoname&quot;</span>), </span>
-<span id="cb5-16"><a href="#cb5-16" tabindex="-1"></a>    <span class="at">suffix =</span> <span class="fu">c</span>(<span class="st">&quot;_2019&quot;</span>, <span class="st">&quot;_2020&quot;</span>)</span>
-<span id="cb5-17"><a href="#cb5-17" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
-<span id="cb5-18"><a href="#cb5-18" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">-</span><span class="fu">contains</span>(<span class="st">&quot;geoid&quot;</span>))</span></code></pre></div>
-<pre><code>## Warning in left_join(., commute_2021 %&gt;% select(-year), by = c(&quot;geoname&quot;), : Detected an unexpected many-to-many relationship between `x` and `y`.
-## ℹ Row 846 of `x` matches multiple rows in `y`.
-## ℹ Row 849 of `y` matches multiple rows in `x`.
-## ℹ If a many-to-many relationship is expected, set `relationship =
-##   &quot;many-to-many&quot;` to silence this warning.</code></pre>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a>commute_2019 <span class="ot">&lt;-</span> alone_2019 <span class="sc">%&gt;%</span> </span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a>  <span class="fu">inner_join</span>(transit_2019, <span class="at">by=</span><span class="fu">c</span>(<span class="st">&quot;geoid&quot;</span>, <span class="st">&quot;geoname&quot;</span>)) <span class="sc">%&gt;%</span> </span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">year =</span> <span class="st">&quot;2019&quot;</span>, <span class="at">.after=</span>geoname)</span>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a>commute_2021 <span class="ot">&lt;-</span> alone_2021 <span class="sc">%&gt;%</span> </span>
+<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a>  <span class="fu">inner_join</span>(transit_2021, <span class="at">by=</span><span class="fu">c</span>(<span class="st">&quot;geoid&quot;</span>, <span class="st">&quot;geoname&quot;</span>)) <span class="sc">%&gt;%</span> </span>
+<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">year =</span> <span class="st">&quot;2021&quot;</span>, <span class="at">.after=</span>geoname)</span>
+<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a></span>
+<span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a><span class="co"># Way 1</span></span>
+<span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a>commute_1 <span class="ot">&lt;-</span> commute_2021 <span class="sc">%&gt;%</span> <span class="fu">bind_rows</span>(commute_2019)</span>
+<span id="cb1-10"><a href="#cb1-10" tabindex="-1"></a><span class="co"># Way 2</span></span>
+<span id="cb1-11"><a href="#cb1-11" tabindex="-1"></a>commute_2 <span class="ot">&lt;-</span> commute_2019 <span class="sc">%&gt;%</span> </span>
+<span id="cb1-12"><a href="#cb1-12" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">-</span>year) <span class="sc">%&gt;%</span> </span>
+<span id="cb1-13"><a href="#cb1-13" tabindex="-1"></a>  <span class="fu">left_join</span>(</span>
+<span id="cb1-14"><a href="#cb1-14" tabindex="-1"></a>    commute_2021 <span class="sc">%&gt;%</span> <span class="fu">select</span>(<span class="sc">-</span>year), </span>
+<span id="cb1-15"><a href="#cb1-15" tabindex="-1"></a>    <span class="at">by=</span><span class="fu">c</span>(<span class="st">&quot;geoname&quot;</span>), </span>
+<span id="cb1-16"><a href="#cb1-16" tabindex="-1"></a>    <span class="at">suffix =</span> <span class="fu">c</span>(<span class="st">&quot;_2019&quot;</span>, <span class="st">&quot;_2020&quot;</span>)</span>
+<span id="cb1-17"><a href="#cb1-17" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
+<span id="cb1-18"><a href="#cb1-18" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">-</span><span class="fu">contains</span>(<span class="st">&quot;geoid&quot;</span>))</span></code></pre></div>
 <ol start="12" style="list-style-type: decimal">
 <li>Make a plot to show how commutes have changed from 2019 to 2023. Did
 you choose the same type of plot as your classmates? Give the plot a
