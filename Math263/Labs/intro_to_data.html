@@ -1757,7 +1757,7 @@ O’Hare, you need to first <code>filter</code> the data for flights with
 that destination (<code>dest == &quot;ORD&quot;</code>) and then make a histogram
 of the departure delays of only those flights.</p>
 <div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a>ord_flights <span class="ot">&lt;-</span> nycflights <span class="sc">%&gt;%</span></span>
-<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a>  <span class="fu">filter</span>(dest <span class="sc">==</span> <span class="st">&quot;LAX&quot;</span>)</span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a>  <span class="fu">filter</span>(dest <span class="sc">==</span> <span class="st">&quot;ORD&quot;</span>)</span>
 <span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a><span class="fu">ggplot</span>(<span class="at">data =</span> ord_flights, <span class="fu">aes</span>(<span class="at">x =</span> dep_delay)) <span class="sc">+</span></span>
 <span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a>  <span class="fu">geom_histogram</span>()</span></code></pre></div>
 <p>Let’s decipher these two commands (OK, so it might look like four
