@@ -1,0 +1,329 @@
+---
+title: "Linear Regression Demo"
+output:
+  rmdformats::html_clean
+#date: '2023-01-23'
+---
+
+
+### Read in the data
+
+This data set contains a sample of information about the geyser Old Faithful. Imagine you are a visitor to Yellowstone National Park, and you'd like to predict when the next eruption will be. This data set includes the duration of eruptions and the wait time until the next eruption for a small sample of eruptions.
+
+```{r setup, include=T, message=F}
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE)
+library(tidyverse)
+faithful <- read_csv("faithful.csv")
+```
+
+
+### Linear Association
+
+By plotting the duration of each eruption versus the wait time, we can see that there seems to be a linear association between the eruption duration and the wait until the next eruption.
+
+```{r}
+ggplot(data=faithful, aes(x=duration, y=wait)) +
+  geom_point()
+```
+
+What line would fit this data best? Try to estimate the slope and intercept from the graph and fill in below.
+
+```{r}
+# Fill in with your guesses
+your_slope = NA
+your_intercept = NA
+
+ggplot(data=faithful, aes(x=duration, y=wait)) +
+  geom_point() + 
+  geom_abline(intercept=your_intercept, slope=your_slope, color="blue")
+```
+
+Remember that ggplot has a nice method to draw a line that "best" matches the data. Compare this with your line. How did you do?
+
+```{r, fig.show="hide", results='hide'}
+ggplot(data=faithful, aes(x=duration, y=wait)) +
+  geom_point() + 
+  geom_abline(intercept=your_intercept, slope=your_slope, color="blue") + 
+  geom_smooth(method="lm", se=FALSE, color="purple")
+```
+
+This line matches what we think the "best" line should be. But where does it come from? Think about your intuition of the best line: you want as many points to be as close to the line as possible. You wouldn't draw a line where all the points were above or below the line, so it should sit somewhere in the "middle" of all the points. We can make this more precise with the Method of Least Squares.
+
+## Basic least squares regression
+
+Later we'll learn the `tidymodels` way to approach fitting a line to data, but here let's just use base `R`:
+
+```{r}
+library(broom)
+faithful_mod <- lm(wait ~ duration, data = faithful)
+#summary(faithful_mod) # less tidy way to see model outputs
+tidy(faithful_mod) # the tidy function comes from the broom package
+glance(faithful_mod)
+```
+Here we see that the `lm` method is estimating the "least squares" line to be
+$$ 33.47440 + 10.72964 * \texttt{duration} $$
+
+We'll talk about the rest of the information in the table later. But this seems to be a very good fit! The wait times are very predictable---now you know why the geyser is called Old Faithful!
+
+
+## Regression Diagnostics
+
+### How well does a linear model fit the data?
+
+We have sample correlation as a measure of the strength of *linear* association between two variables:
+```{r}
+faithful %>% summarize(cor = cor(wait, duration), rsq = cor(wait, duration)^2)
+```
+The value of $.9$ indicates that there is a positive relationship, and the fact that it is close to 1 indicates that there is a strong *linear* relationship. Typically in these circumstances we use $r^2$, which can be more easily interpreted as the (esimtated) "proportion of variation in $Y$ that can be explained by knowing $x$."
+
+A pattern in the residuals can indicate some other pattern, perhaps due to nonlinear dependence or some confounding variable. (Note that here the model residuals and model predictions for each row are stored in the `faithful_mod$resid` and `faithful_mod$fitted` variables. In this case the `.` is a placeholder for `faithful_mod`
+
+```{r}
+ggplot(data = faithful_mod) +
+  geom_point(aes(y = .resid, x = .fitted)) +
+  labs(x = "Fitted Values", y = "Residuals") 
+```
+
+We should also make sure that the residuals are nearly normal. We won't talk much about this: there are more sophisticated methods and statistical tests to precisely measure how likely it is that data came from a normal distribution, but we'll content ourselves with the old "glance at a plot" method.
+
+```{r}
+ggplot(data = faithful_mod) +
+  geom_histogram(aes(x = .resid), bins=15)
+```
+
+Looks normal-ish. Good enough. (A boxplot could also be appropriate here). Since we are more concerned with a models predictive power rather than statistical inference, we won't worry as much about assumptions as in 463. We are mostly using linear models as a jumping off point for regression!
+
+### Do the variables contribute to the model?
+
+We can see this in the model summary (or tidy summary). The $p$-value in each row summarizes the evidence for the null-hypothesis in a statistical hypothesis test
+$$ H_0: \, \beta_i = 0, \qquad H_1: \, \beta_i \neq 0 $$.
+
+Small p-values indicate that there is evidence to *reject* the null hypothesis. So in the case below there is strong evidence to believe that the true coefficients really are different from 0. 
+
+```{r}
+# summary(faithful_mod)
+tidy(faithful_mod)
+glance(faithful_mod)
+```
+
+
+### Is a linear model a helpful predictor overall?
+
+The $F$-statistic above (`glance(faithful_mod)$statistic`) provides a measure of model fit. Is the model overall helpful in predicting the output $Y$, or is it more useful to just use $\bar{Y}$? The $p$-value assists in making the conclusion: here we see it is small, so we conclude that at least one of the variables is helpful in predicting $Y$.
+
+
+
+
+## The tidymodels way
+
+```{r}
+library(tidymodels)
+
+faithful_tidymodel <- linear_reg() %>% 
+  set_engine("lm") %>%
+  fit(wait ~ duration, data=faithful)
+
+# we can extract all the same diagnostic information that we know from "lm" by using extract_fit_engine
+faithful_tidymodel %>% extract_fit_engine()
+
+# For example:
+faithful_tidymodel %>% 
+  extract_fit_engine() %>%
+  glance() # or glance!
+
+```
+
+The `lm` method gives the least squares regression line, but this is not the only way to do it! Later we will learn about penalized or weighted least squares, along with generalized linear models (GLM). 
+
+## Your turn
+
+Read in the file `dugong.csv` that contains information about the age and length of dugongs. 
+
+```{r}
+library(janitor)
+dugong <- read_csv("dugong.csv") %>% clean_names()
+```
+1. Draw a scatter plot of `age` vs `length`. Does there appear to be a linear relationship? Plot the best fit line. 
+
+```{r, include=F, echo=F}
+ggplot(dugong, aes(age, length)) + 
+  geom_point() + 
+  geom_smooth(method="lm", se=FALSE) + 
+  geom_smooth(method="lm", se=FALSE, formula="y~poly(x,2)")
+```
+
+
+2. What is the correlation between `age` and `length`? Add this to your graph above (may use a caption or put it in the title)
+
+```{r, include=F, echo=F}
+lin_mod <- lm(length ~ age, data = dugong)
+tidy(lin_mod)
+glance(lin_mod)
+```
+
+3. Fit a linear model using `length ~ age` to find the best fit line.
+
+4. Provide some diagnostics to evaluate how good `age` is as a predictor of `length`. Are any assumptions violated?
+
+```{r, include=F, echo=F}
+ggplot(lin_mod, aes(.fitted, .resid)) + geom_point()
+```
+
+5. What ideas do you have to improve the model? How could you implement them?
+
+```{r}
+quad_mod <- lm(length ~ log(age), data = dugong)
+tidy(quad_mod)
+glance(quad_mod)
+```
+
+```{r}
+ggplot(quad_mod, aes(.fitted, .resid)) + geom_point()
+```
+
+
+## Feature Engineering
+
+We noticed before that it looks like there are two clusters, long eruptions and short eruptions. Maybe it is the case that the linear predictor should differ for each cluster. Let's create a new variable and use it in our model:
+
+```{r}
+faithful <- faithful %>%
+  mutate(long_wait = if_else(duration > 3, TRUE, FALSE))
+faithful %>% ggplot(aes(duration, wait)) + 
+  geom_point(aes(color=long_wait)) + 
+  geom_smooth(aes(color=long_wait), method="lm", se=FALSE)
+```
+
+Here is the model and summary:
+
+```{r}
+faithful_mod2 <- lm(wait ~ duration + long_wait, data=faithful)
+tidy(faithful_mod2)
+glance(faithful_mod2)
+```
+
+What is the equation for the estimated model now? How does it handle the categorical variable?
+
+Here is an example using "interaction terms", i.e. products of different variables. 
+
+```{r}
+faithful_mod3 <- lm(wait ~ duration*long_wait, data=faithful)
+tidy(faithful_mod3)
+glance(faithful_mod3)
+```
+
+
+# Multiple Regression
+
+The previous models are examples of using multiple predictors in a linear regression model. 
+
+```{r}
+mr.mod <- lm(mpg ~ . - cyl - vs - carb - gear - drat - disp - hp, data=mtcars)
+
+tidy(mr.mod)
+glance(mr.mod)
+```
+
+Multi-colinearly is a problem because it makes it difficult to infer the effect of one variable where everything else. So this is not a problem if you just care about the predictions, as is the case in Machine Learning.
+the factors with high collinearity don’t matter for your for you analysis.
+
+```{r}
+library(car)
+vif(mr.mod)
+```
+
+Let's use backward selection to get a better model. We will discuss better ways to do variable selection later in this course.
+
+```{r}
+mr.mod <- lm(mpg ~ ., data=mtcars)
+
+tidy(mr.mod)
+glance(mr.mod)
+```
+
+
+
+## Regression with categorical variables
+
+```{r}
+diamonds <- diamonds %>% 
+  select(carat:price)
+
+diamond.mod <- lm(price ~ ., data=diamonds)
+tidy(diamond.mod)
+glance(diamond.mod)
+```
+
+## Comparing models for prediction
+
+We are going to consider using a linear model for prediction. Since we want to know if our model will work well on data we haven't yet seen, we'll randomly split the data up into two parts, a training and a test set.
+
+In `tidymodels`, the split object tells stores how the split is performs. 
+
+```{r}
+library(tidymodels)
+
+# Use a seed for reproducibility
+# Otherwise your code will run differently than mine (which is ok!)
+# set.seed(2023)
+
+faithful_split <- initial_split(faithful, prop = 0.80)
+faithful_split
+
+faithful_train <- training(faithful_split)
+faithful_test <- testing(faithful_split)
+```
+
+```{r}
+# Our first model, fit using training data
+faithful_tidymodel1 <- linear_reg() %>% 
+  set_engine("lm") %>%
+  fit(wait ~ duration, data=faithful_train)
+
+# Use the model to make predictions on the test set
+faithful_results <- predict(
+  faithful_tidymodel1, 
+  new_data = faithful_test %>% select(-wait)
+  ) %>% 
+  bind_cols(faithful_test %>% select(wait))
+
+faithful_results
+```
+
+Let's see how the model performed:
+
+```{r}
+# make a set of metrics you want to use
+metrics <- metric_set(rmse, rsq)
+# apply those metrics to the results
+metrics(faithful_results, truth = wait, estimate = .pred)
+```
+
+Repeat these steps with our full model using the `long_wait` variable and compare the metrics.
+
+```{r}
+# Our first model, fit using training data
+faithful_tidymodel2 <- linear_reg() %>% 
+  set_engine("lm") %>%
+  fit(wait ~ duration*long_wait, data=faithful_train)
+
+# Use the model to make predictions on the test set
+faithful_results <- predict(
+  faithful_tidymodel2, 
+  new_data = faithful_test %>% select(-wait)
+  ) %>% 
+  bind_cols(faithful_test %>% select(wait))
+
+glance(faithful_tidymodel2)
+
+metrics(faithful_results, truth = wait, estimate = .pred)
+```
+
+What does overfitting look like? This model fits the training data very well, but won't do well on the test data.
+
+```{r}
+ggplot(faithful_train, aes(duration, wait)) +
+  geom_point() + 
+  geom_smooth(method="lm", se=FALSE, formula="y~poly(x,15)")
+```
+
