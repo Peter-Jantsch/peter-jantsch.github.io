@@ -5,6 +5,7 @@ output:
 #date: '2023-01-23'
 ---
 
+# Part 1: Simple Least Squares Linear Regression
 
 ### Read in the data
 
@@ -171,20 +172,22 @@ ggplot(lin_mod, aes(.fitted, .resid)) + geom_point()
 
 5. What ideas do you have to improve the model? How could you implement them?
 
-```{r}
-quad_mod <- lm(length ~ log(age), data = dugong)
-tidy(quad_mod)
-glance(quad_mod)
+```{r, include=F}
+another_mod <- lm(length ~ log(age), data = dugong)
+tidy(another_mod)
+glance(another_mod)
 ```
 
-```{r}
-ggplot(quad_mod, aes(.fitted, .resid)) + geom_point()
+```{r, include=F}
+ggplot(another_mod, aes(.fitted, .resid)) + geom_point()
 ```
 
+
+# Part 2: More Linear Regression Topics
 
 ## Feature Engineering
 
-We noticed before that it looks like there are two clusters, long eruptions and short eruptions. Maybe it is the case that the linear predictor should differ for each cluster. Let's create a new variable and use it in our model:
+We noticed before that it looks like there are two clusters in the faithful data, long eruptions and short eruptions. Maybe it is the case that the linear predictor should differ for each cluster. Let's create a new variable and use it in our model:
 
 ```{r}
 faithful <- faithful %>%
@@ -213,18 +216,18 @@ glance(faithful_mod3)
 ```
 
 
-# Multiple Regression
+# Part 3: Multiple Regression
 
 The previous models are examples of using multiple predictors in a linear regression model. 
 
 ```{r}
-mr.mod <- lm(mpg ~ . - cyl - vs - carb - gear - drat - disp - hp, data=mtcars)
+mr.mod <- lm(mpg ~ ., data=mtcars)
 
 tidy(mr.mod)
 glance(mr.mod)
 ```
 
-Multi-colinearly is a problem because it makes it difficult to infer the effect of one variable where everything else. So this is not a problem if you just care about the predictions, as is the case in Machine Learning.
+Multi-colinearly is a problem because it makes it difficult to infer the effect of one variable where everything else. This is not a problem if you just care about the predictions, as is the case in Machine Learning.
 the factors with high collinearity don’t matter for your for you analysis.
 
 ```{r}
