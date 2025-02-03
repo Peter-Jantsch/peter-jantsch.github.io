@@ -1,0 +1,474 @@
+---
+title: "Tidymodels intro"
+output:
+  rmdformats::html_clean
+---
+
+```{r setup, include=TRUE}
+knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
+library(tidymodels)
+library(tidyverse)
+library(ggridges) # for density plot
+library(skimr) # for summary statistics
+library(GGally) # for correlation plot
+```
+
+# General Process
+
+## Train/Test Split
+
+We are going to consider using a linear model for predicting the wait time of old faithful eruptions using the duration of the eruption. Since we want to know if our model will work well on data we haven't yet seen, a good way to understand it's performance is to randomly split the data up into two parts, a training and a test set.
+
+In `tidymodels`, the split object tells stores how the split is performs. 
+
+```{r}
+faithful <- read_csv("faithful.csv") %>%
+  mutate(long_wait = if_else(duration > 3, TRUE, FALSE))
+
+# Use a seed for reproducibility
+# Otherwise your code will run differently than mine (which is ok!)
+set.seed(2024) # comment this out if you want the code to generate a true random split
+
+# set aside 20% of data for testing
+faithful_split <- initial_split(faithful, prop = 0.80)
+faithful_split
+
+faithful_train <- training(faithful_split)
+faithful_test <- testing(faithful_split)
+```
+
+The output tells us how many observations are in each set.
+
+## Sepcifying the model
+
+```{r}
+# Our first model
+faithful_tidymodel1 <- linear_reg() %>% 
+  set_engine("lm") %>%
+  set_mode("regression") # this is not necessary for "lm"
+
+faithful_tidymodel1
+```
+
+Notice that the model isn't yet "trained", we've only specified the method and which algorithm we want to use for the training.
+
+## Fitting the model
+
+```{r}
+#fit the model using training data
+faithful_fit1 <- faithful_tidymodel1 %>%
+  fit(
+    wait ~ duration, # the formula
+    data=faithful_train # we're only using the training data to fit!
+    )
+
+tidy(faithful_fit1)
+```
+
+
+## Making predictions
+
+Now that we have the model fit to the training data, we see what the model would predict for data in the test set:
+```{r}
+# Use the model to make predictions on the test set
+faithful_results1 <- predict(
+  faithful_fit1, 
+  new_data = faithful_test %>% select(-wait)
+  ) %>% 
+  bind_cols(faithful_test %>% select(wait))
+
+faithful_results1
+```
+## Model Evaluation
+
+Let's see how the model performed:
+
+```{r}
+# make a set of metrics you want to use
+# For linear regression, we're interested in R^2 and
+# Root mean square error
+metrics <- metric_set(rmse, rsq)
+# apply those metrics to the results
+metrics(faithful_results1, truth = wait, estimate = .pred)
+```
+
+## Comparing with a second model: overfitting
+
+Repeat these steps with our full model using the `long_wait` variable and compare the metrics.
+
+```{r}
+# Notice that here we specified the model
+# and fit the model in one step!
+faithful_tidymodel2 <- linear_reg() %>% 
+  set_engine("lm") %>%
+  fit(wait ~ poly(duration, 15), data=faithful_train)
+
+# Use the model to make predictions on the test set
+faithful_results2 <- predict(
+  faithful_tidymodel2, 
+  new_data = faithful_test %>% select(-wait)
+  ) %>% 
+  bind_cols(faithful_test %>% select(wait))
+
+glance(faithful_tidymodel2)
+
+metrics(faithful_results2, truth = wait, estimate = .pred)
+```
+
+What does overfitting look like? Go back and fit the model using the formula `wait ~ poly(duration, 15)`. Compare the fit (R^2) and accuracy (RMSE) on the training data to the test data---what do you notice?
+
+```{r}
+ggplot(faithful_train, aes(duration, wait)) +
+  geom_point() + 
+  geom_smooth(method="lm", se=FALSE, formula="y~poly(x,15)")
+```
+
+# Tidymodels with Recipes and Workflows
+
+Here we will focus on predicting fuel efficiency (mpg) from a US Department of Energy data set for real cars from 2018.  Many methods will require categorical variable to be designated as factors (as they should be) and you want to make sure that happens before any data splitting. 
+
+```{r}
+cars2018 <- read_csv("cars2018.csv") %>% 
+    mutate_if(is.character, as.factor)
+glimpse(cars2018)
+```
+
+## EDA
+
+```{r}
+# Plot a histogram
+ggplot(cars2018, aes(x = mpg, fill = drive)) +
+    geom_histogram(bins = 25) +
+    labs(x = "Fuel efficiency (mpg)",
+         y = "Number of cars")
+
+ggplot(cars2018, aes(x = mpg, y = drive)) + 
+  geom_density_ridges(aes(fill = drive), alpha = .3) + 
+    labs(x = "Fuel efficiency (mpg)",
+         y = "Number of cars")
+
+# Engine displacement is the measure of the cylinder volume swept by all of the pistons of a piston engine, excluding the combustion chambers. It is commonly used as an expression of an engine's size, and by extension as a loose indicator of the power an engine might be capable of producing and the amount of fuel it should be expected to consume.
+
+# Scatterplot
+ggplot(cars2018, aes(x = displacement, y = mpg, color = drive)) +
+    geom_point(position="jitter") +
+    labs(y = "Fuel efficiency (mpg)",
+         x = "Displacement",
+         color = "Drive")
+    
+# Scatterplot with transformation
+ggplot(cars2018, aes(x = displacement, y = log(mpg), color = drive)) +
+    geom_point(position="jitter") +
+    geom_smooth(method="lm") +
+    labs(y = "Log Fuel efficiency (mpg)",
+         x = "Displacement",
+         color = "Drive")
+
+cars2018 <- cars2018 %>% mutate(lnmpg = log(mpg))
+
+ggplot(cars2018, aes(x = lnmpg, y = drive)) + 
+  geom_density_ridges(aes(fill = drive), alpha = .3) + 
+    labs(x = "Log Fuel efficiency (mpg)",
+         y = "Number of cars")
+```
+
+```{r}
+# Deselect model and model-index columns to create cars_vars
+# These columns tell us the individual identifiers for each car and it would not make sense to include them in modeling
+# All other variables are potential predictors.
+set.seed(2023) # this is a random split, so setting the seed lets us reproduce results
+car_vars <- cars2018 %>%
+    select(-model, -model_index, -mpg) # we are using lnmpg as our outcome now
+
+#skim(car_vars)
+ggpairs(car_vars)
+```
+
+## Initial Train/Test Split
+
+An initial split indicates that it is without cross-validation (we'll talk about CV soon! But we keep it simple here.)
+
+```{r}
+set.seed(2023) # this is a random split, so setting the seed lets us reproduce results
+
+?initial_split
+car_split <- car_vars %>%
+    initial_split(prop = 0.8,
+                  strata = transmission)
+car_split
+```
+
+
+
+```{r}
+car_train <- training(car_split)
+car_test <- testing(car_split)
+```
+
+## Model Fitting
+
+Let's specify the model. We only know one kind so far!
+
+```{r}
+# a linear regression model specification
+# there is no data referenced here!
+lm_mod <- linear_reg() %>%  # this is the type of model
+    set_engine("lm")        
+```
+
+Below I am fitting the model to the data.  Since I am using the standard `lm` package, the fitting is done via least squares.
+
+```{r}
+# an example with 2 predicts
+# note that the first argument of the "fit" function is the model specification
+lm_fit <- lm_mod %>%
+    fit(lnmpg ~ transmission + cylinders, # there are lots of ways to designate "formulas" in R
+        data = car_train)
+lm_fit$fit
+
+# all the predictors
+lm_fit <- lm_mod %>%
+    fit(lnmpg ~ ., 
+        data = car_train)
+lm_fit$fit  # note the parameter values (the betas) are different
+
+# Print the summary of the model fit
+# You can save these as their own tibbles
+tidy(lm_fit)
+glance(lm_fit)
+```
+
+## Predicting
+
+The row order of the predictions are always the same as the original data.
+
+```{r}
+predict(lm_fit,new_data = car_test)
+
+# Notice that this is slightly different to what we tried above
+# The augment function will do prediction and add the columns so you don't need to have a separate call
+car_test_results <- augment(lm_fit, new_data = car_test)
+metrics(car_test_results, truth=lnmpg, estimate=.pred)
+
+ggplot(car_test_results, aes(x = lnmpg, y = .pred)) +
+  geom_point() +
+  geom_abline(slope = 1, intercept = 0, color = "green")
+
+# plot(lm_fit$fit)  # the 'lm' function has a plotting method just for its own results -- it's not the best, but you can see what it does!
+
+ggplot(car_test_results, aes(x = .pred, y = .resid)) +
+  geom_point()
+ggplot(car_test_results, aes(x = .resid)) +
+  geom_histogram() 
+```
+
+## Feature Engineering
+
+Let's take a step back: what have we done at this point?
+
+-  Imported data from csv
+-  mutate variables to factors (preprocessing)
+-  EDA
+-  Take the log of `mpg`. (preprocessing)
+
+Let's repeat some of these steps using `recipes`.
+
+```{r}
+# Re-importing the data to remove the preprocessing step and splitting the data
+cars2018 <- read_csv("cars2018.csv") %>% mutate(lnmpg = log(mpg))
+set.seed(2023)
+car_split <- cars2018 %>%
+    initial_split(prop = 0.8,
+                  strata = transmission)
+car_train <- training(car_split)
+car_test <- testing(car_split)
+```
+
+Why did we already transform the outcome variable here?  Why not in the recipe (the next step)?  We will get an error when we try to predict new data with an unknown `mpg`.  So transform *outcome* variables outside of recipes.
+
+(There are decisions to make about which steps to do at the beginning and forever, and which to put in a recipe.)
+
+```{r}
+# the first step here uses the formula to identify roles
+lm_recipe <- recipe(lnmpg ~ ., data = car_train) %>%
+  # now we will convert strings to factors
+    step_string2factor(where(is_character)) %>% 
+  # now we remove some variables
+    step_rm(model, model_index, mpg)
+```
+
+Ok, now we have a recipe. Did anything actually happen? What can we do with a recipe?
+
+One the recipe is specified, we `prep` it, then `bake` the data. 
+
+```{r}
+tidy(lm_recipe)
+prep(lm_recipe)
+baked_train <- bake(prep(lm_recipe), new_data = NULL)
+baked_train
+```
+
+We can also add a new step to the recipe and recompute.
+
+```{r}
+lm_recipe <- lm_recipe %>% 
+  step_dummy(all_nominal_predictors()) # add a new step
+baked_train <- bake(prep(lm_recipe), new_data = NULL)
+baked_train
+```
+
+```{r}
+lm_fit <- linear_reg() %>%
+  set_engine("lm") %>%
+  fit(lnmpg ~., data = baked_train)
+
+baked_test <- bake(prep(lm_recipe), new_data=car_test)
+
+cars_results <- predict(lm_fit, new_data = baked_test) %>% 
+  bind_cols(baked_test %>% select(lnmpg))
+
+# we specified these metrics earlier so this is not strictly necessary
+metrics <- metric_set(rmse, rsq)
+metrics(cars_results, truth=lnmpg, estimate=.pred)
+```
+
+
+
+## Workflows
+Now we can do this with workflows, which will take care of all the baking and prepping!
+
+```{r}
+# first, create a model
+# we actually already did this, but we'll do it again just for clarity
+lm_mod <- linear_reg() %>%  # this is the type of model
+    set_engine("lm") 
+# second, add it to a workflow with the recipe for preprocessing
+lm_wkflow <- workflow() %>% 
+    add_recipe(lm_recipe) %>% 
+    add_model(lm_mod)
+lm_wkflow
+```
+
+## Model Fitting Round 2
+
+```{r}
+lm_fit <- fit(lm_wkflow, data = car_train)
+tidy(lm_fit)
+glance(lm_fit)
+```
+
+Let's take our model and predict the test data as before.  This should look exactly the same as the first time we ran it.  
+
+```{r}
+# the workflow will do all the preprocessing steps for the test data
+predict(lm_fit,new_data = car_test) 
+
+# the augment function is an easy way to add the predictions to the data set
+car_test_results <- augment(lm_fit, new_data = car_test)
+
+ggplot(car_test_results, aes(x = lnmpg, y = .pred)) +
+  geom_point() +
+  geom_abline(slope = 1, intercept = 0, color = "green")
+```
+
+## Model Evaluation
+
+```{r}
+metrics <- metric_set(rmse, rsq) 
+metrics(car_test_results, truth = lnmpg, estimate = .pred)
+```
+
+
+<!---
+# Teaching Linear Regression
+## Extra EDA
+
+```{r}
+cars2018 <- read_csv("cars2018.csv") %>% mutate(lnmpg = log(mpg))
+cars2018 %>% 
+    select(-c(model, model_index)) %>% 
+    ggpairs()
+cars2018 %>% 
+    select_if(is.numeric) %>% 
+    cor() %>% 
+    ggcorrplot(method = "circle")
+```
+
+## Model Fitting
+
+```{r}
+#initial split
+set.seed(13)
+car_split <- cars2018 %>%
+    initial_split(prop = 0.8,
+                  strata = transmission)
+car_train <- training(car_split)
+car_test <- testing(car_split)
+
+# model spec
+lm_mod <- linear_reg() %>%  
+    set_engine("lm")        
+
+# recipe spec
+lm_recipe <- recipe(lnmpg ~ ., data = car_train) %>% 
+    step_rm(model) %>% 
+    update_role(model_index, new_role = "ID") %>% 
+    step_normalize(all_numeric_predictors()) %>% 
+    step_corr(all_numeric_predictors()) %>% # I like the defaults
+    step_dummy(all_nominal_predictors())
+
+prep(lm_recipe)
+
+# workflow spec
+lm_wkflow <- workflow() %>% 
+    add_recipe(lm_recipe) %>% 
+    add_model(lm_mod)
+
+# cv spec
+car_folds <- vfold_cv(car_train, v = 10, repeats = 5)
+
+# fitting
+car_res <- lm_wkflow %>% fit_resamples(resamples = car_folds)
+
+# look at performance
+lm_metrics <- collect_metrics(car_res)
+```
+
+Well, that's pretty amazing.  I'll fit to the entire training set and we'll look at the linearity assumption.
+
+```{r}
+lm_final_fit <- fit(lm_wkflow, data = car_train)
+lm_predicted <- augment(lm_final_fit, new_data = car_test)
+my_metrics <- metric_set(rmse, rsq) 
+my_metrics(lm_predicted, truth = lnmpg, estimate = .pred)
+ggplot(lm_predicted %>% mutate(.res = lnmpg - .pred),
+       aes(x = .pred, y = .res)) +
+  geom_point() +
+  geom_abline(slope = 0, intercept = 0, color = "green")
+
+```
+
+# Teaching Penalized Models
+## Ridge Regression
+
+```{r}
+#save.image(file = "cars_image.Rdata")
+load("cars_image.Rdata")
+
+rr_mod <- linear_reg(penalty = tune(), mixture = 0) %>%  
+    set_engine("glmnet")
+
+rr_wkflow <- workflow() %>% 
+    add_recipe(lm_recipe) %>% 
+    add_model(rr_mod)
+
+penalty_grid <- grid_regular(penalty(), levels = 20)
+
+rr_res <- rr_wkflow %>% 
+    tune_grid(resamples = car_folds, grid = penalty_grid)
+rr_metrics <- collect_metrics(rr_res)
+rr_res %>% 
+    show_best(metric = "rmse")
+# suggests no ridge regression
+```
+-->
