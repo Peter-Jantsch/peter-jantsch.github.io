@@ -1,0 +1,130 @@
+---
+title: "Logistic Regression Demo"
+output:
+  rmdformats::html_clean
+---
+
+```{r setup, include=T}
+knitr::opts_chunk$set(echo = TRUE, eval=F) # remove eval=F in your copy
+library(tidyverse)
+library(janitor)
+library(tidymodels)
+```
+
+# The Data
+
+We'll work again with the `patients.csv` data that contains information about different tumors, where we are trying to classify them as benign (`0`) or cancerous (`1`).
+
+
+```{r}
+patients <- read.csv("breast-cancer.csv") %>% 
+  clean_names() %>%
+  mutate(class = as.factor(class))
+```
+
+To get a sense for how logistic regression works, consider the following plot:
+
+```{r}
+ggplot(patients, aes(x=bland_chromatin, y=class)) +
+  geom_point(position = position_jitter(w = 0.25, h = 0), alpha=.2) 
+```
+
+
+```{r}
+patients_split <- initial_split(patients, prop=.8)
+
+patients_train <- training(patients_split)
+patients_test <- testing(patients_split)
+
+patients_folds <- vfold_cv(patients_train, v=10)
+```
+
+
+# Logistic Regression
+
+Let's create a logistic regression model specification.
+
+```{r}
+logistic_model <- logistic_reg() %>%
+  set_engine("glm") %>% # the default, stands for "generalized linear models"
+  set_mode("classification") # also the default
+```
+
+What kinds of pre-processing should we use? Check out the appendix in TMWR.
+
+```{r}
+logistic_recipe <- recipe(class ~ ., data=patients_train) %>%
+  update_role(id, new_role="id") %>%
+  step_normalize(all_numeric_predictors())
+
+logistic_wf <- workflow() %>%
+  add_model(logistic_model) %>%
+  add_recipe(logistic_recipe)
+```
+
+Cross-validate the model to estimate performance:
+
+```{r}
+logistic_wf %>%
+  fit_resamples(resamples=patients_folds) %>%
+  collect_metrics()
+```
+
+
+```{r}
+logistic_results <- logistic_wf %>%
+  fit(data=patients_train) %>%
+  augment(new_data=patients_test)
+
+my_metrics <- metric_set(accuracy, sens, spec)
+accuracy(logistic_results, truth=class, estimate=.pred_class)
+```
+
+
+# Penalized Regression
+
+We can implement a penalized regression model (linear or logistic) using the `glmnet` package. Make sure you install this package before you run!
+
+```{r}
+penalized_model <- logistic_reg(penalty=tune(), mixture=tune()) %>%
+  set_engine("glmnet") %>% #stands for "generalized linear models with elastic net"
+  set_mode("classification") # also the default
+
+penalized_wf <- workflow() %>%
+  add_model(penalized_model) %>%
+  add_recipe(logistic_recipe)
+```
+
+Cross-validate the model to tune parameters:
+
+```{r}
+penalized_tuning <- penalized_wf %>%
+  tune_grid(
+    # You need to fill this in
+  )
+
+penalized_tuning %>% show_best(n=10)
+```
+
+Smaller values of the penalty mean the penalty has less influence. I would interpret the results above to mean that penalization is actually hurting performance! This is likely because I gave you a good set of predictors to begin with, which is not the case in other problems. In this case, I would probably stick to a penalization of 0.
+
+We can see that the neither parameter has much influence here using `autoplot`:
+
+```{r}
+autoplot(penalized_tuning)
+
+# can you also plot the grid that was used?
+```
+
+```{r}
+# You fill in the desired values
+penalized_results <- penalized_wf %>%
+  finalize_workflow(
+    parameters = tibble(penalty=NA, mixture=NA)
+  ) %>%
+  fit(data=patients_train) %>%
+  augment(new_data=patients_test)
+
+my_metrics(penalized_results, truth=class, estimate=.pred_class)
+```
+
