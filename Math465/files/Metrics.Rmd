@@ -148,3 +148,99 @@ specificity(results, group, .pred_class, estimator = "macro")
 specificity(results, group, .pred_class, estimator = "macro_weighted")
 specificity(results, group, .pred_class, estimator = "micro")
 ```
+
+# ROC/AUC
+
+Audrey Fitzekam, Daniel Olson
+
+## Example 1
+
+```{r}
+patients <- read.csv("breast-cancer.csv") |> 
+  clean_names() |>
+  mutate(class = as.factor(class))
+
+# Data splitting
+set.seed(42)
+patients_split <- initial_split(patients, prop = 0.80, strata = class)
+patients_train <- training(patients_split)
+patients_test <- testing(patients_split)
+patients_folds <- vfold_cv(patients_train, v=10)
+
+# Model, recipe, and workflow
+logreg_model <- logistic_reg()
+
+logreg_recipe <- recipe(class ~ ., data=patients_train) |>
+  update_role(id, new_role="id")
+
+logreg_wf <- workflow(logreg_recipe, logreg_model)
+```
+
+
+ROC/AUC is one of many metrics that can be computed using `fit_resamples`.
+
+```{r}
+logreg_wf |>
+  fit_resamples(resamples = patients_folds, metrics = metric_set(roc_auc)) |> 
+  collect_metrics() # ROC/AUC is also one of the default metrics if `metrics` is unspecified
+```
+
+We can also calculate the ROC/AUC of a fitted model with `roc_auc()`.
+
+```{r}
+logreg_results <- logreg_wf |>
+  fit(data = patients_train) |>
+  augment(new_data = patients_test)
+
+roc_auc(logreg_results, truth = class, .pred_1, event_level = "second")
+```
+
+Let's take a look at the ROC curve itself, using `roc_curve()` and `autoplot()`. Note that the arguments to `roc_curve()` and `roc_auc()` are exactly the same.
+
+```{r}
+roc_curve(logreg_results, truth = class, .pred_1, event_level = "second") |> 
+  autoplot()
+```
+
+This ROC curve hugs the top left and has an AUC close to 1, which is very good. Now let's look at a different example where the ROC/AUC isn't quite as high.
+
+
+## Example 2
+
+```{r, message = F}
+titanic <- read_csv("titanic.csv") |>
+  clean_names() |> 
+  mutate(survived = as.factor(survived), sex = as.factor(sex))
+
+# Data splitting
+set.seed(2025)
+titanic_split <- initial_split(titanic, prop = 0.80, strata = survived)
+titanic_train <- training(titanic_split)
+titanic_test  <- testing(titanic_split)
+titanic_folds <- vfold_cv(titanic_train, v=10, strata = survived)
+
+# Recipe
+titanic_rec <- recipe(survived ~ ., data = titanic_train) |> 
+  update_role(name, new_role = "id") |> 
+  step_normalize(all_numeric_predictors()) |> 
+  step_dummy(sex)
+
+# Model and workflow
+titanic_knn <- nearest_neighbor(neighbors = 5, weight_func = "gaussian") |> 
+  set_mode("classification")
+
+titanic_wf <- workflow(titanic_rec, titanic_knn)
+
+# Fitting
+titanic_results <- titanic_wf |> 
+  fit(titanic_train) |> 
+  augment(new_data = titanic_test)
+```
+
+```{r}
+titanic_results |> roc_auc(truth = survived, .pred_1, event_level = "second")
+
+titanic_results |> 
+  roc_curve(truth = survived, .pred_1, event_level = "second") |> 
+  autoplot()
+```
