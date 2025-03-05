@@ -84,7 +84,7 @@ threshold_perf(
   truth=HR30, 
   estimate=.pred_1,
   thresholds = seq(0.2, 0.8, by = 0.1),
-  metrics = metric_set(f_meas, sens, spec),
+  metrics = metric_set(f_meas, precision, recall),
   event_level = "second"
   )
 ```
@@ -244,3 +244,25 @@ titanic_results |>
   roc_curve(truth = survived, .pred_1, event_level = "second") |> 
   autoplot()
 ```
+
+# F measure
+
+Kevin Yuvaraj, et al
+
+This example has the same set up as above, so I didn't reprint the code. Compare the f1 scores to the two examples above.
+
+Very high F1 score, since precision and recall are both high:
+
+```{r}
+f1_score_cancer <- f_meas(logreg_results, truth = class, estimate = .pred_class)
+
+print(f1_score_cancer)
+```
+An F1-score of 0.828 means the knn-model has a good balance between precision and recall. Applying this to the titanic dataset, it means the model predicts Titanic survival pretty well since it minimizing false positives and false negatives.
+
+```{r}
+f1_score_titanic <- f_meas(titanic_results, truth = survived, estimate = .pred_class)
+
+print(f1_score_titanic)
+```
+
