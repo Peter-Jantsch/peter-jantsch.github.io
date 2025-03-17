@@ -1,0 +1,176 @@
+---
+title: "Principal Component Analysis"
+output: html_document
+#date: "2023-01-11"
+---
+
+```{r setup, include=TRUE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidymodels)
+library(tidyverse)
+```
+
+# Background
+
+We are going to again use the `ames` dataset, containing information about home prices in Ames, IA.
+
+```{r}
+data(ames)
+ames <- ames %>% mutate(Sale_Price = log10(Sale_Price))
+```
+
+
+# PCA
+
+You've already looked at a lot of preprocessing steps for this data. Let's look at feature extraction by examining only the variables that measure the size of some aspect of the home:
+
+```{r}
+ames_sub <- ames %>% 
+  select(Sale_Price, matches("(SF$)|(Gr_Liv)"))
+```
+
+We might guess that these variables are correlated---larger homes have large basements, or large second floors, etc. Let's take a look:
+
+```{r}
+library(GGally)
+ggpairs(ames_sub %>% select(-Sale_Price))
+```
+
+Remember that this plot only shows pair-wise correlations, and not correlations between 3 or more variables.
+
+Let's take a look at a linear model built with these features.
+
+```{r}
+mod_all <- lm(Sale_Price ~ ., data=ames_sub)
+tidy(mod_all)
+glance(mod_all)
+```
+
+This isn't a huge number of variables, but there is some correlation, and we might be able to help the model by reducing the number of variables we use.
+
+```{r}
+pca_rec <- recipe(Sale_Price ~ ., data=ames_sub) %>%
+  step_normalize(all_numeric_predictors()) %>%
+  step_pca(
+    all_numeric_predictors(),
+    num_comp = 7, # number of principal components to keep, default 5
+    #threshold = .75 # can you determine what this does using the help file?
+    )
+```
+
+
+Let's prep and bake this recipe, to see what the output looks like:
+
+```{r}
+pca_prep <- prep(pca_rec)
+baked_pca <- bake(
+  pca_prep, 
+  new_data=NULL
+)
+```
+
+Take a look at `baked_pca`. What do you see? 
+
+```{r}
+ggpairs(baked_pca %>% select(-Sale_Price))
+```
+
+The prepped recipe has all the information about how to perform the linear transform the variables. We'll take a look at this transformation in these next few code chunks.
+
+Let's take a look at the following. What is in the `value` column?
+
+```{r}
+tidied_pca <- tidy(pca_prep, 2) #information about step 2: PCA
+tidied_pca
+```
+
+Now we can get a sense for which variables have the most influence on the principle components 1-5:
+
+```{r}
+tidied_pca %>%
+  filter(component %in% paste0("PC", 1:5)) %>%
+  mutate(component = fct_inorder(component)) %>%
+  ggplot(aes(value, terms, fill = terms)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~component, nrow = 1) +
+  labs(y = NULL)
+```
+
+Here is another way to think about this:
+
+```{r}
+library(tidytext)
+
+tidied_pca %>%
+  filter(component %in% paste0("PC", 1:4)) %>%
+  group_by(component) %>%
+  top_n(8, abs(value)) %>%
+  ungroup() %>%
+  mutate(terms = reorder_within(terms, abs(value), component)) %>%
+  ggplot(aes(abs(value), terms, fill = value > 0)) +
+  geom_col() +
+  facet_wrap(~component, scales = "free_y") +
+  scale_y_reordered() +
+  labs(
+    x = "Absolute value of contribution",
+    y = NULL, fill = "Positive?"
+  )
+```
+
+Inside of my prepped recipe, I also have a column which tells me how much variation is captured by each principal component:
+
+```{r}
+# pull out second step: PCA, then take the std dev of the residuals
+sdev <- pca_prep$steps[[2]]$res$sdev
+percent_variation <- sdev^2 / sum(sdev^2)
+
+tibble(
+  component = unique(tidied_pca$component),
+  percent_var = percent_variation 
+) %>%
+  mutate(component = fct_inorder(component)) %>%
+  ggplot(aes(component, percent_var)) +
+  geom_col() +
+  scale_y_continuous(labels = scales::percent_format()) +
+  labs(x = NULL, y = "Percent variance explained by each PCA component")
+```
+
+What do you see from this plot? How many principle components do we really need to accurately capture the information in this data? 
+
+Another way to get this information is a scree plot, which you will make on your homework.
+
+```{r}
+model_pca <- lm(Sale_Price ~ PC1 + PC2 + PC3 + PC4 + PC5, data=baked_pca)
+tidy(model_pca)
+glance(model_pca)
+```
+
+This is an unsupervised technique, meaning we do not take into account the objective: in this case, predicting the value of `Sale_Price`.  Since we are interested in supervised prediction, we should try to use that information as we learn important directions. This is a process called Partial Least Squares.
+
+
+<!-- <!--- -->
+<!-- # Partial Least Squares -->
+
+<!-- ```{r} -->
+<!-- #We need a package from the a library not available through CRAN -->
+<!-- if (!require("BiocManager", quietly = TRUE)) -->
+<!--     install.packages("BiocManager") -->
+
+<!-- BiocManager::install("mixOmics") -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- library("mixOmics") -->
+
+<!-- pls_rec <- recipe(Sale_Price ~ ., data=ames_sub) %>% -->
+<!--   step_normalize(all_numeric_predictors()) %>% -->
+<!--   step_pls(all_numeric_predictors(), outcome="Sale_Price", num_comp=7) -->
+
+<!-- baked_pls <- bake( prep(pls_rec),  new_data=NULL ) -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- ggpairs(baked_pls %>% select(-Sale_Price)) -->
+<!-- ``` -->
+
+<!-- --> -->
