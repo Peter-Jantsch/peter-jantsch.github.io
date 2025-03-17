@@ -1,0 +1,268 @@
+---
+title: "465 Metric Examples"
+output: html_document
+---
+
+```{r setup, message=FALSE}
+library(Lahman)
+library(tidymodels)
+library(tidyverse)
+library(janitor)
+tidymodels_prefer()
+```
+
+
+# Precision-Recall Curves
+
+From the presentation by Luke Hamm, Andrew Howe, Noah Husted. Adapted for `tidymodels` and `yardstick` by your professor.
+
+```{r}
+# Import data
+data <- Batting |> 
+  filter(yearID >= 1960, AB >= 200) |> 
+  mutate(HR30 = as.factor(ifelse(HR >= 30, 1, 0)))
+
+# Create training and test sets
+set.seed(12345)
+
+split <- initial_split(data, prop = 0.8) # should be initial_time_split, but will update later
+
+trainData <- training(split)
+testData <- testing(split)
+folds <- vfold_cv(trainData, v = 10, repeats = 5)
+
+
+# preprocessing steps
+rec <- recipe(HR30 ~ AB + H + RBI + BB + SO + SB, data = trainData) |>
+  step_naomit(all_predictors()) |> # to omit missing rows
+  step_normalize(all_numeric_predictors())
+```
+
+```{r}
+# simple way, no tuning
+model <- logistic_reg() |>
+  set_engine("glm") |>
+  set_mode("classification")
+
+hr_wkflow <- workflow() |>
+  add_model(model) |>
+  add_recipe(rec)
+
+hr_pred <- hr_wkflow |>
+  fit(data = trainData) |>
+  augment(new_data = testData)
+
+# use the `pr_curve` function from `yardstick`
+# the event of interest is HR30 = 1, which is second
+pr_curve_info <- pr_curve(hr_pred, .pred_1, truth = HR30, event_level = "second")
+autoplot(pr_curve_info) # could also use ggplot, as below
+
+# gives the area under the PR curve, values close to 1 are better
+pr_auc(hr_pred, .pred_1, truth = HR30, event_level = "second")
+
+# ggplot(pr_curve_info, aes(x=recall, y=precision)) +
+#   geom_path() +
+#   coord_equal()
+```
+
+
+Using this model, achieving 100% precision or 100% recall would come at a significant cost to the other metric. In this case of predicting 30+ HR seasons, precision is likely more valuable than recall, making a threshold where precision is 80% and recall is 50% the most optimal balance.
+
+We could look in the `pr_curve_info` tibble to see that we would favor a threshold of about 0.63:
+
+```{r}
+pr_curve_info |>
+  filter(precision <.81, precision > .80)
+```
+
+Alternatively, the `threshold_perf` function gives us the values of a metric over different thresholds:
+
+```{r}
+library(probably)
+threshold_perf(
+  hr_pred, 
+  truth=HR30, 
+  estimate=.pred_1,
+  thresholds = seq(0.2, 0.8, by = 0.1),
+  metrics = metric_set(f_meas, precision, recall),
+  event_level = "second"
+  )
+```
+
+# Multi-class Sensitivity and Specificity 
+
+Luke Johnsen, Jacob Turrubiartes, Joshua Winnes
+
+```{r}
+Diabetes <- read.csv("diabetes.csv") |> mutate(group = as.factor(group))
+```
+
+## Splits and Recipe
+
+```{r}
+set.seed(2023)
+diab_split <- Diabetes %>%
+  initial_split(
+    prop = 0.7,
+    strata = group
+  )
+diab_test <- testing(diab_split)
+diab_train <- training(diab_split)
+
+recipe <- recipe(group ~ ., data = diab_train) %>%
+  step_normalize(all_predictors())
+```
+
+```{r}
+library(discrim)
+lda_model <- discrim_linear() %>%
+  set_engine("MASS") %>%
+  set_mode("classification")
+```
+
+## Get Results
+
+```{r}
+lda_workflow <- workflow() %>%
+  add_model(lda_model) %>%
+  add_recipe(recipe)
+
+lda_fit <- lda_workflow %>%
+  fit(data= diab_train)
+
+predictions <- predict(lda_fit, new_data = diab_test)
+
+results <- diab_test %>%
+  select(group) %>%
+  bind_cols(predictions)
+```
+
+## Calculate Metrics
+
+```{r}
+sensitivity(results, group, .pred_class, estimator = "macro")
+sensitivity(results, group, .pred_class, estimator = "macro_weighted")
+sensitivity(results, group, .pred_class, estimator = "micro")
+
+specificity(results, group, .pred_class, estimator = "macro")
+specificity(results, group, .pred_class, estimator = "macro_weighted")
+specificity(results, group, .pred_class, estimator = "micro")
+```
+
+# ROC/AUC
+
+Audrey Fitzekam, Daniel Olson
+
+## Example 1
+
+```{r}
+patients <- read.csv("breast-cancer.csv") |> 
+  clean_names() |>
+  mutate(class = as.factor(class))
+
+# Data splitting
+set.seed(42)
+patients_split <- initial_split(patients, prop = 0.80, strata = class)
+patients_train <- training(patients_split)
+patients_test <- testing(patients_split)
+patients_folds <- vfold_cv(patients_train, v=10)
+
+# Model, recipe, and workflow
+logreg_model <- logistic_reg()
+
+logreg_recipe <- recipe(class ~ ., data=patients_train) |>
+  update_role(id, new_role="id")
+
+logreg_wf <- workflow(logreg_recipe, logreg_model)
+```
+
+
+ROC/AUC is one of many metrics that can be computed using `fit_resamples`.
+
+```{r}
+logreg_wf |>
+  fit_resamples(resamples = patients_folds, metrics = metric_set(roc_auc)) |> 
+  collect_metrics() # ROC/AUC is also one of the default metrics if `metrics` is unspecified
+```
+
+We can also calculate the ROC/AUC of a fitted model with `roc_auc()`.
+
+```{r}
+logreg_results <- logreg_wf |>
+  fit(data = patients_train) |>
+  augment(new_data = patients_test)
+
+roc_auc(logreg_results, truth = class, .pred_1, event_level = "second")
+```
+
+Let's take a look at the ROC curve itself, using `roc_curve()` and `autoplot()`. Note that the arguments to `roc_curve()` and `roc_auc()` are exactly the same.
+
+```{r}
+roc_curve(logreg_results, truth = class, .pred_1, event_level = "second") |> 
+  autoplot()
+```
+
+This ROC curve hugs the top left and has an AUC close to 1, which is very good. Now let's look at a different example where the ROC/AUC isn't quite as high.
+
+
+## Example 2
+
+```{r, message = F}
+titanic <- read_csv("titanic.csv") |>
+  clean_names() |> 
+  mutate(survived = as.factor(survived), sex = as.factor(sex))
+
+# Data splitting
+set.seed(2025)
+titanic_split <- initial_split(titanic, prop = 0.80, strata = survived)
+titanic_train <- training(titanic_split)
+titanic_test  <- testing(titanic_split)
+titanic_folds <- vfold_cv(titanic_train, v=10, strata = survived)
+
+# Recipe
+titanic_rec <- recipe(survived ~ ., data = titanic_train) |> 
+  update_role(name, new_role = "id") |> 
+  step_normalize(all_numeric_predictors()) |> 
+  step_dummy(sex)
+
+# Model and workflow
+titanic_knn <- nearest_neighbor(neighbors = 5, weight_func = "gaussian") |> 
+  set_mode("classification")
+
+titanic_wf <- workflow(titanic_rec, titanic_knn)
+
+# Fitting
+titanic_results <- titanic_wf |> 
+  fit(titanic_train) |> 
+  augment(new_data = titanic_test)
+```
+
+```{r}
+titanic_results |> roc_auc(truth = survived, .pred_1, event_level = "second")
+
+titanic_results |> 
+  roc_curve(truth = survived, .pred_1, event_level = "second") |> 
+  autoplot()
+```
+
+# F measure
+
+Kevin Yuvaraj, et al
+
+This example has the same set up as above, so I didn't reprint the code. Compare the f1 scores to the two examples above.
+
+Very high F1 score, since precision and recall are both high:
+
+```{r}
+f1_score_cancer <- f_meas(logreg_results, truth = class, estimate = .pred_class)
+
+print(f1_score_cancer)
+```
+An F1-score of 0.828 means the knn-model has a good balance between precision and recall. Applying this to the titanic dataset, it means the model predicts Titanic survival pretty well since it minimizing false positives and false negatives.
+
+```{r}
+f1_score_titanic <- f_meas(titanic_results, truth = survived, estimate = .pred_class)
+
+print(f1_score_titanic)
+```
+
