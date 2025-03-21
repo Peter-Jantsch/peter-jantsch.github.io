@@ -1297,7 +1297,7 @@ overflow: visible;
 </style>
 <style type="text/css" data-origin="pandoc">
 pre > code.sourceCode { white-space: pre; position: relative; }
-pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span { line-height: 1.25; }
 pre > code.sourceCode > span:empty { height: 1.2em; }
 .sourceCode { overflow: visible; }
 code.sourceCode > span { color: inherit; text-decoration: inherit; }
@@ -1308,7 +1308,7 @@ div.sourceCode { overflow: auto; }
 }
 @media print {
 pre > code.sourceCode { white-space: pre-wrap; }
-pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
 }
 pre.numberSource code
 { counter-reset: source-line 0; }
@@ -1665,8 +1665,8 @@ inference using <strong>infer</strong>.</p>
 </div>
 <div id="creating-a-reproducible-lab-report" class="section level3">
 <h3>Creating a reproducible lab report</h3>
-<p>To create your new lab report, open the lab report template in the
-Files tab. Remember to add your name and the lab report number.</p>
+<p>Create a new R markdown file as a lab report. Remember to add your
+name and the lab report number.</p>
 </div>
 <div id="the-data" class="section level3">
 <h3>The data</h3>
@@ -1877,8 +1877,7 @@ to interactive app</a></p>
 and 50 confidence intervals constructed (the default values for the
 above app), what proportion of your confidence intervals include the
 true population proportion? Is this proportion exactly equal to the
-confidence level? If not, explain why. Make sure to include your plot in
-your answer.</li>
+confidence level? If not, explain why.</li>
 </ol>
 <hr />
 </div>
@@ -1915,7 +1914,7 @@ interval change as you increase the number of bootstrap samples.
 affect the standard error?</p></li>
 </ol>
 <hr />
-<p><a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/"><img alt="Creative Commons License" style="border-width:0" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFgAAAAfCAMAAABUFvrSAAAAAXNSR0IB2cksfwAAAARnQU1BAACxjnz7UZMAAAAgY0hSTQAAeiUAAICDAAD5/wAAgOkAAHUwAADqYAAAOpgAABdvkl/FRgAAAb9QTFRFAAAAAAAA////////////8fHx7+/v6Ofn4+Pj4N/g39/f1tXV09bS0tXS0tXR0dTR0dTQ0NTQ0NPPz9PPztLOztHNzdHNzdHMz8/PzdDMzNDMzNDLzM/Ly8/Ly8/Ky87Kys3Jyc3Jyc3Iy8rLyMzIyMzHx8vHxsrGycjIxsrFxcnFyMfHxcnExMnExMjDw8jDxMfDw8fCwsfCwcXAwMXAwMW/wMS/v8S+v8O+vsO+vsK9vcK9vcK8v7+/vMG8vMG7vMC8u8C7u8C6ur+6ur+5ub65ub64uL23t7y2urm5tru1tbq0tLqztLmzs7iysrixtbW1srexsbewsbawsLavsLWvr7Wur7SusLOvrrStrrOtr7KvrbOsrLKrr6+vq7GqrKuro6Ghn6OenqCdn5+fnp2dn5aalpmWmJaXk5iTkZSRkZORkY+Pj4+PiYyJjoeLhIaEhIWEgoWChIGCgICAfX98fH98eXx5dnN0cHJvcHBwbmxsY19hYGBgXV5dUFFQUFBQQ0RDQEBAPj8+Pzc5NTY1MjMxMDAwMS0uLS0tKSkpKCkoKCgoKicnJCQkIx8gICAgGxsbEBAQDg4ODQ4N9qQJ7gAAAAR0Uk5T/wAKDnDBpeYAAANgSURBVHjatZb7VxJBFMdvNVIR2raFGRCr1FqbihL5TMLM9zPNNE1N0x5KmSZpUShiRUm1uPIHd2dhGd3d4zni8fvLeL5z9uPd78y9C5yBE9EpAOjt6gg2+qslsUxwORwud6koef0Nwfau3oHhp+OTk1Mvji5QuW3NdT7J47bzXKHNVniRt1/3SL7a5jZKHh2fnMqTjNx73nLBzq1spQGV3lrmrrjFKv99JA+OjE5oJa/vAGpnXYcw99HpQK7o5EO7kNPuIu/wVPqb27v6h0ayJS8kAeKRSBwgucCeN/oMHKzzig5uEwCUaDgQCEcVANisueqpqg129GAYaskv9yBmJShrDPYYwegzcKOv3Em5SthCMppHdLLGIfoaWjt7sWQKTkIUdwDoNiQZQPXPVVSc03wG9ksCj9yEleRkSWDNvFvyN2PJT8Ywi3WIXdDAJAa5PFV/VkZ1Z30Grr5pDyE3Wy4jL17xeOtbu/qGRiempnbAynatsKM9T/0K+fu3z7L8LuMzsOTmdkEpIQdkUWCXuy75H3T0DtIsIE7dKKiBkDhoz6Nf8Fr+QMgr+VfGZ2CxeAUgTHSaB1i2i76mNsyCgiPUBBRdIzkA+gX/5D8YsyyfVX0GLru8BQoGEYjF4+HM8h4fVmCLL6VZ9A+PHQomj38HVPB5HVjg0hBFIFDFp4EqSl87fdFdWfuws2949NAoSPfsbUJmZFkfhasIAEtMQMoaSM0n8HpMp+bVLApdkj+IFw7B2cMDMB4exiuvrv6V3+oPz2kDwHdRc84t6hvYHLc0MF4rYn7d0F+VUV8LqH9k8P4GiRga5MbMzAXmG6OwlKTCGAVd9FEcuaXZ4WVPLbvQ/5/mhNzhISEJkIhGEvohZPTZddsEheSu23RcXUgKr1uZt/5R5rrlMzbF4hBmYd4gd5vaewZo5+Uz6O+oLW09pKXzBOMQmjMbQiG7p7oBG48OobzAsCbwG0guYVyrOjaFj3BMfXFd2j/oLWEF4AfnXINj65Pj0obu08RdewMHlekP+ofpBjEnu/i5/R/TEO/UcyGDJUYu2zRLQ7BzIe3zv8jZBczBrDCz57URAqb6+dxdfJkrstmKOPzB8mwbDGJBGES0TVNtL7UILqfTJbQsMax5xUafgU9ep08Ge+o/RyjkZSMkFewAAAAASUVORK5CYII=" /></a><br />This
+<p><a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/"><img role="img" aria-label="Creative Commons License" alt="Creative Commons License" style="border-width:0" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFgAAAAfCAMAAABUFvrSAAAAAXNSR0IB2cksfwAAAARnQU1BAACxjnz7UZMAAAAgY0hSTQAAeiUAAICDAAD5/wAAgOkAAHUwAADqYAAAOpgAABdvkl/FRgAAAb9QTFRFAAAAAAAA////////////8fHx7+/v6Ofn4+Pj4N/g39/f1tXV09bS0tXS0tXR0dTR0dTQ0NTQ0NPPz9PPztLOztHNzdHNzdHMz8/PzdDMzNDMzNDLzM/Ly8/Ly8/Ky87Kys3Jyc3Jyc3Iy8rLyMzIyMzHx8vHxsrGycjIxsrFxcnFyMfHxcnExMnExMjDw8jDxMfDw8fCwsfCwcXAwMXAwMW/wMS/v8S+v8O+vsO+vsK9vcK9vcK8v7+/vMG8vMG7vMC8u8C7u8C6ur+6ur+5ub65ub64uL23t7y2urm5tru1tbq0tLqztLmzs7iysrixtbW1srexsbewsbawsLavsLWvr7Wur7SusLOvrrStrrOtr7KvrbOsrLKrr6+vq7GqrKuro6Ghn6OenqCdn5+fnp2dn5aalpmWmJaXk5iTkZSRkZORkY+Pj4+PiYyJjoeLhIaEhIWEgoWChIGCgICAfX98fH98eXx5dnN0cHJvcHBwbmxsY19hYGBgXV5dUFFQUFBQQ0RDQEBAPj8+Pzc5NTY1MjMxMDAwMS0uLS0tKSkpKCkoKCgoKicnJCQkIx8gICAgGxsbEBAQDg4ODQ4N9qQJ7gAAAAR0Uk5T/wAKDnDBpeYAAANgSURBVHjatZb7VxJBFMdvNVIR2raFGRCr1FqbihL5TMLM9zPNNE1N0x5KmSZpUShiRUm1uPIHd2dhGd3d4zni8fvLeL5z9uPd78y9C5yBE9EpAOjt6gg2+qslsUxwORwud6koef0Nwfau3oHhp+OTk1Mvji5QuW3NdT7J47bzXKHNVniRt1/3SL7a5jZKHh2fnMqTjNx73nLBzq1spQGV3lrmrrjFKv99JA+OjE5oJa/vAGpnXYcw99HpQK7o5EO7kNPuIu/wVPqb27v6h0ayJS8kAeKRSBwgucCeN/oMHKzzig5uEwCUaDgQCEcVANisueqpqg129GAYaskv9yBmJShrDPYYwegzcKOv3Em5SthCMppHdLLGIfoaWjt7sWQKTkIUdwDoNiQZQPXPVVSc03wG9ksCj9yEleRkSWDNvFvyN2PJT8Ywi3WIXdDAJAa5PFV/VkZ1Z30Grr5pDyE3Wy4jL17xeOtbu/qGRiempnbAynatsKM9T/0K+fu3z7L8LuMzsOTmdkEpIQdkUWCXuy75H3T0DtIsIE7dKKiBkDhoz6Nf8Fr+QMgr+VfGZ2CxeAUgTHSaB1i2i76mNsyCgiPUBBRdIzkA+gX/5D8YsyyfVX0GLru8BQoGEYjF4+HM8h4fVmCLL6VZ9A+PHQomj38HVPB5HVjg0hBFIFDFp4EqSl87fdFdWfuws2949NAoSPfsbUJmZFkfhasIAEtMQMoaSM0n8HpMp+bVLApdkj+IFw7B2cMDMB4exiuvrv6V3+oPz2kDwHdRc84t6hvYHLc0MF4rYn7d0F+VUV8LqH9k8P4GiRga5MbMzAXmG6OwlKTCGAVd9FEcuaXZ4WVPLbvQ/5/mhNzhISEJkIhGEvohZPTZddsEheSu23RcXUgKr1uZt/5R5rrlMzbF4hBmYd4gd5vaewZo5+Uz6O+oLW09pKXzBOMQmjMbQiG7p7oBG48OobzAsCbwG0guYVyrOjaFj3BMfXFd2j/oLWEF4AfnXINj65Pj0obu08RdewMHlekP+ofpBjEnu/i5/R/TEO/UcyGDJUYu2zRLQ7BzIe3zv8jZBczBrDCz57URAqb6+dxdfJkrstmKOPzB8mwbDGJBGES0TVNtL7UILqfTJbQsMax5xUafgU9ep08Ge+o/RyjkZSMkFewAAAAASUVORK5CYII=" /></a><br />This
 work is licensed under a
 <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">Creative
 Commons Attribution-ShareAlike 4.0 International License</a>.</p>

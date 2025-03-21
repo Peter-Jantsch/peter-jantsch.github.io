@@ -140,7 +140,7 @@ What do you see from this plot? How many principle components do we really need 
 Another way to get this information is a scree plot, which you will make on your homework.
 
 ```{r}
-model_pca <- lm(Sale_Price ~ PC1 + PC2 + PC3 + PC4 + PC5, data=baked_pca)
+model_pca <- lm(Sale_Price ~ PC1 + PC2 + PC3 + PC4 + PC5 + PC6 + PC7, data=baked_pca)
 tidy(model_pca)
 glance(model_pca)
 ```
