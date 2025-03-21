@@ -1,0 +1,180 @@
+---
+title: "Special Topics I"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(tidymodels)
+tidymodels_prefer()
+```
+
+# Creating a new Project in RStudio
+
+Projects are a great way to save your data, environment, models, and progress without interrupting other things you are doing. So far in this class, we've been able to get by without it, but our class work is starting to get unwieldy.
+
+Create a new folder in your file directory---call it `Missing_Data_Activity` or something similar. Next, we'll look for the project tab in the upper right of the RStudio window, and click "New Project". Make sure you save any files that are currently open.
+
+Next, we'll make a new project from existing folder, and locate it in the folder you just made. Note that you can also create the new folder directly as part of this process. (When you open your new project, you will need to reopen this markdown file within the project environment)
+
+And that's it! We've created a new project. Now any code we run while in the project environment gets saved there. We can close the project, work on other code, and when we come back to it, everything is the same as when we left!
+
+# Missing Data
+
+In this activity, we are going to use the palmer penguins data.
+
+```{r}
+library(palmerpenguins)
+?palmerpenguins::penguins
+```
+
+We've done a little bit of exploring with this data. Let's check out what is going on with missing values:
+
+```{r}
+library(skimr)
+penguins <- palmerpenguins::penguins
+skim(penguins)
+```
+
+Let's take a look at the rows with  `NA` values:
+
+```{r}
+penguins |> 
+  filter(if_any(everything(), is.na))
+```
+
+
+We have two rows that contain almost no information, and 9 rows that are just missing the value of `sex`.
+
+An easy option would be to simply drop all the rows with `NA` using `step_naomit`. But you should be careful with this, as the "missing-ness" might contain important information about a data point. Plus, more data is usually better, and throwing away potentially useful points isn't great!
+
+
+## Imputing values
+
+One way to deal with this issue is to *impute* missing values, meaning we fill them in with what we think should be there. For example, we are missing the `bill_length_mm` for an Adelie penguin, so we might fill in the average bill length for all penguins, or the average bill length for just Adelie penguins.
+
+This is just prediction---what we've been doing the whole semester!---except now we are predicting the value of the predictors. 
+
+Let's see if we can impute the `sex` variable using KNN. Notice that I am normalizing in advance, since KNN works better with normalized distances. 
+
+```{r}
+set.seed(101014)
+penguins_split <- initial_split(data = penguins, prop = 0.8)
+
+penguins_train <- training(penguins_split)
+penguins_test <- testing(penguins_split)
+
+penguins_recipe <- recipe(species ~ ., data=penguins_train) |>
+  step_normalize(all_numeric_predictors()) |>
+  step_impute_knn(sex) # "imputes" missing values of the sex variable
+```
+
+We could also impute using a linear model or a bagged tree. In fact, all we're doing is predicting the predictors! 
+
+If we bake the recipe, we can see whether there are any missing values left:
+
+```{r}
+penguins_baked <- bake(prep(penguins_recipe), new_data=NULL) 
+penguins_baked |>
+  filter(if_any(everything(), is.na))
+```
+
+We can even see the values that were imputed:
+
+```{r}
+penguins_baked |> 
+  filter(
+    is.na(penguins_train$sex) # take the equivalent rows from the training set where sex == NA
+    )
+```
+
+
+So what do we do with the remaining missing values? In this case, all we have to go on is the species and year. This isn't really enough to impute anything, we would simply be filling in based on the mean, median, or other sample statistics from the variables. Here is an example with  `step_impute_median`:
+
+```{r}
+new_recipe <- penguins_recipe |> step_impute_median(all_numeric_predictors())
+
+# No more missing values:
+penguins_baked <- bake(
+  prep(new_recipe), 
+  new_data=NULL
+  )
+
+penguins_baked |> filter(is.na(penguins_train$sex))
+```
+
+## Other options
+
+There are a number of other things you could try! In our case, there isn't much to go on to try to impute the values, so it might be better to simply drop them. If we were dealing with a categorical variable, we might use `step_unknown` to assign missing values to a new category. 
+
+
+# Saving model objects
+
+You may have noticed that many of our recent models take a long time to tune, cross-validate, and/or train. One thing we can do to help our timing is to save the model object so that we can come back to it at a later time. Or once you have your finalized, fitted model for your project, you can just save it to import it into your final report---then you won't have to re-fit/tune/cv each time you want to knit!
+
+To do this, we will use the `readr` package. Here we are going to create a model, fit it, then save it to our system.
+
+```{r}
+library(baguette)
+penguins_wf <- workflow() |>
+  add_recipe(new_recipe) |>
+  add_model(
+    bag_tree() |>
+      set_mode("classification") |>
+      set_engine("rpart")
+  )
+
+penguins_fit <- penguins_wf |> fit(data=penguins_train)
+
+library(readr)
+write_rds(penguins_fit, "final_model.rds")
+```
+
+We can now remove everything from the environment, and still load the model:
+
+My recomendation for your project is to have two separate files: one where you tune and evaluate your models, the other for writing the report. Since the tuning can take a long time, you don't want to have to rerun this code everytime you knit your project report. After you tune and finalize your model, save it! Then in your project report you can read the model in and do whatever you need to do with it.
+
+```{r}
+model <- read_rds("final_model.rds")
+model
+```
+
+# Improving your model
+
+We already know a few ways to go about improving a model. One, we might try to tune the model to find the best set of hyperparameters. We might try up- or downsampling to correct for imbalances in the training data. We might reduce the number of predictors or add a penalization term.
+
+Always keep an eye out for over-fitting. One typical sign of over-fitting is when your cross-validation error is much higher than your test error. 
+
+Another helpful thing you can do is to look at your predictions: is there anything similar about the observations your model didn't predict correctly?
+
+```{r}
+penguins_pred <- model |>
+  augment(new_data = penguins_test)
+
+incorrect_pred <- penguins_pred |>
+  filter( .pred_class != species )
+
+incorrect_pred
+```
+
+It looks like we had five errors in the test set. One is a row where we had missing data. Our recipe imputed the median values there, and it sees that this didn't work well. Probably there isn't more we could do here. 
+
+```{r}
+ggplot(data=penguins_test) +
+  geom_point(data=incorrect_pred, aes(x=body_mass_g, y = flipper_length_mm), shape="x", size=4) +
+  geom_point(aes(x=body_mass_g, y = flipper_length_mm, color=species)) 
+```
+
+If we wanted to include the imputed values, we could do the following:
+
+```{r}
+pens_test_baked <- new_recipe |> prep() |> bake(new_data = penguins_test)
+
+incorrect_baked <- new_recipe |> prep() |> bake(new_data = incorrect_pred)
+
+ggplot() +
+  geom_point(data=incorrect_baked, aes(x=body_mass_g, y = flipper_length_mm), shape="x", size=4) +
+  geom_point(data=pens_test_baked, aes(x=body_mass_g, y = flipper_length_mm, color=species)) 
+```
+
