@@ -1,0 +1,111 @@
+---
+title: "Single Layer Neural Network for Regression"
+output:
+  rmdformats::html_clean
+---
+
+# Single Layer NNs
+
+```{r chapter-07-startup}
+library(tidymodels)
+tidymodels_prefer()
+library(tensorflow)
+library(keras)
+```
+
+## Installing Keras
+
+We will be using the `keras` engine to fit our neural networks in R. Keras is actually a wrapper around an even more extensive open source platform, TensorFlow, which has also been ported to the R environment. TensorFlow was developed at Google.
+
+If you are on a Mac, its pretty straightforward. In a fresh environment (immediately after starting RStudio), you need to:
+
+* Install the Keras package by typing `install.packages("keras")`
+* load the Keras package by typing: library(keras)
+* Install the backend (including TensorFlow) by typing `install_keras()`
+That should be it.
+
+Its a bit more complicated for Windows: In a fresh environment (immediately after starting RStudio), you need to:
+
+* Install the Keras package by typing install.packages(keras)
+* Install a simple version of Python. Keras will do this for you if it realizes you don’t have Python installed. To get it to realize this you should
+* load the Keras package by typing: library(keras)
+* type dataset_mnist(). This should trigger Keras to ask you if you want to install Miniconda or some other scaled down version of Python. Follow the instructions (i.e., start by typing Y)
+You should now restart R
+* Then, install the back-end (including TensorFlow) by typing: install_keras()
+
+## Background
+
+We’ll model the ridership on the Chicago elevated trains as a function of the 14 day lagged ridership at two important stations. This is similar to a dataset we used earlier in the semester, but there is a ton more information here! However, we're going to be boring and only use 2 predictors.
+
+The two predictors are in the same units (rides per day/1000) and do not need to be normalized.
+
+```{r}
+library(tidymodels)
+tidymodels_prefer()
+data(Chicago)
+  
+Chicago.sub <- Chicago %>% select(ridership, Clark_Lake, Quincy_Wells)
+
+set.seed(465)
+Chicago_split <- initial_time_split(Chicago.sub, prop=.85)
+Chicago_train <- training(Chicago_split)
+Chicago_test <- testing(Chicago_split)
+```
+
+A single-layer NN model specification is done in tidymodels using `mlp`, which stands for "multi-layer perceptron". The model engine `keras` has 5 tuning parameters (find the 5th in the help file). Since we are considering very simple NNs today, I will set the number of hidden units to something small. And we learned about the ReLU activation, so I will specify that one, though it is not the default.
+
+We will consider next week the optimization algorithms used to fit NNs, which are controlled through a `penalty` and `epochs`. But for today, let's just set these parameters.
+
+```{r}
+mlp_reg_spec <- 
+  mlp(hidden_units = 10, activation = "relu",
+      # We will discuss more about the fitting of the NN next week. Don't worry about these last two parameters:
+      penalty = 0, epochs = 15) %>% 
+  # This model can be used for classification or regression, so set mode
+  set_mode("regression") %>% 
+  set_engine("keras")
+mlp_reg_spec
+```
+
+I am choosing not to do any data preprocessing here. (Why not?)
+
+```{r, warning=F}
+set.seed(465)
+mlp_reg_fit <- mlp_reg_spec %>% fit(ridership ~ ., data = Chicago_train)
+mlp_reg_fit
+```
+
+```{r}
+Chicago_res <- augment(mlp_reg_fit, new_data = Chicago_test)
+```
+
+```{r}
+ggplot(Chicago_res) +
+  geom_point(aes(ridership, .pred)) +
+  geom_abline(slope=1, intercept=0, color="darkgreen") +
+  coord_obs_pred()
+
+my_metrics <- metric_set(rmse, rsq)
+my_metrics(Chicago_res, truth=ridership, estimate=.pred)
+```
+<!--
+
+I wrote my own function to see how the nn is making it's predictions:
+
+```{r}
+my_predict <- function(input) {
+  weights <- mlp_reg_fit$fit$get_weights()
+  bias <- unlist(weights[2])
+  act1_coeff <- unlist(weights[1])[1:2]
+  act2_coeff <- unlist(weights[1])[3:4]
+  
+  A1 <- max( bias[1] + sum(act1_coeff * input), 0 )
+  A2 <- max( bias[2] + sum(act2_coeff * input), 0 )
+
+  f <- unlist(weights[4]) + sum(unlist(weights[3]) * c(A1, A2))
+  return(f)
+}
+
+my_predict(c(3.954, 1.350))
+
+```
