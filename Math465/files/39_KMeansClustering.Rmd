@@ -4,7 +4,7 @@ output:
   rmdformats::html_clean
 ---
 
-```{r setup, include=FALSE}
+```{r setup}
 library(tidymodels)
 tidymodels_prefer()
 library(readr)
